@@ -57,21 +57,21 @@ class DefaultFirebaseOptions {
   // This will generate the correct configuration for all platforms
   
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR_WEB_API_KEY',
-    appId: '1:YOUR_APP_ID:web:YOUR_WEB_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'your-project-id',
-    authDomain: 'your-project-id.firebaseapp.com',
-    storageBucket: 'your-project-id.appspot.com',
-    measurementId: 'G-YOUR_MEASUREMENT_ID',
+    apiKey: 'AIzaSyDoDphE5gO8Xb9ZFYel68WJNW22HdL8FYk', // Using Android API key temporarily - get Web API key from Firebase Console if this doesn't work
+    appId: '1:125244724223:web:YOUR_WEB_APP_ID', // TODO: Get from Firebase Console → Project Settings → Your apps → Web app
+    messagingSenderId: '125244724223',
+    projectId: 'smart-recipe-fb',
+    authDomain: 'smart-recipe-fb.firebaseapp.com',
+    storageBucket: 'smart-recipe-fb.firebasestorage.app',
+    measurementId: 'G-YOUR_MEASUREMENT_ID', // Optional: Get from Firebase Console if using Analytics
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_API_KEY',
-    appId: '1:YOUR_APP_ID:android:YOUR_ANDROID_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'your-project-id',
-    storageBucket: 'your-project-id.appspot.com',
+    apiKey: 'AIzaSyDoDphE5gO8Xb9ZFYel68WJNW22HdL8FYk',
+    appId: '1:125244724223:android:bd9573bf610b4ee1170dca',
+    messagingSenderId: '125244724223',
+    projectId: 'smart-recipe-fb',
+    storageBucket: 'smart-recipe-fb.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

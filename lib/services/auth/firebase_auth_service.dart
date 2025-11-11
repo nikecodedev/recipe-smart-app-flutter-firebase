@@ -6,7 +6,13 @@ import '../../core/config/firebase_config.dart';
 /// Handles user authentication operations
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseConfig.auth;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  
+  // Initialize GoogleSignIn with client ID for web
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    // For web, client ID is read from meta tag in index.html
+    // For Android/iOS, it's configured in Firebase Console
+    scopes: ['email', 'profile'],
+  );
 
   /// Get current user stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -68,12 +74,16 @@ class FirebaseAuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        throw Exception('Google sign-in was cancelled');
+        throw Exception('Google sign-in was cancelled by user');
       }
 
       // Obtain auth details from request
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+
+      if (googleAuth.idToken == null) {
+        throw Exception('Failed to get Google authentication token. Please try again.');
+      }
 
       // Create credential
       final credential = GoogleAuthProvider.credential(
@@ -86,7 +96,15 @@ class FirebaseAuthService {
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
-      throw Exception('Google sign-in failed: $e');
+      // Provide more user-friendly error messages
+      final errorMessage = e.toString();
+      if (errorMessage.contains('ClientID not set')) {
+        throw Exception('Google Sign-In is not properly configured. Please contact support.');
+      } else if (errorMessage.contains('cancelled')) {
+        throw Exception('Google sign-in was cancelled');
+      } else {
+        throw Exception('Google sign-in failed. Please try again.');
+      }
     }
   }
 
