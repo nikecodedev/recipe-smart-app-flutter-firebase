@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/auth_provider.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/home/presentation/screens/home_screen.dart';
+
+/// Route names
+class Routes {
+  static const String login = '/login';
+  static const String register = '/register';
+  static const String forgotPassword = '/forgot-password';
+  static const String home = '/home';
+}
+
+/// GoRouter provider
+final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authStateProvider);
+
+  return GoRouter(
+    initialLocation: Routes.login,
+    redirect: (context, state) {
+      final isLoggedIn = authState.value != null;
+      final isGoingToLogin = state.matchedLocation == Routes.login;
+      final isGoingToRegister = state.matchedLocation == Routes.register;
+      final isGoingToForgotPassword =
+          state.matchedLocation == Routes.forgotPassword;
+
+      // If not logged in and not going to auth screens, redirect to login
+      if (!isLoggedIn &&
+          !isGoingToLogin &&
+          !isGoingToRegister &&
+          !isGoingToForgotPassword) {
+        return Routes.login;
+      }
+
+      // If logged in and going to auth screens, redirect to home
+      if (isLoggedIn &&
+          (isGoingToLogin || isGoingToRegister || isGoingToForgotPassword)) {
+        return Routes.home;
+      }
+
+      // No redirect needed
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: Routes.login,
+        name: 'login',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const LoginScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.register,
+        name: 'register',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const RegisterScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.forgotPassword,
+        name: 'forgot-password',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const ForgotPasswordScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.home,
+        name: 'home',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const HomeScreen(),
+        ),
+      ),
+    ],
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Text('Page not found: ${state.matchedLocation}'),
+      ),
+    ),
+  );
+});
+
