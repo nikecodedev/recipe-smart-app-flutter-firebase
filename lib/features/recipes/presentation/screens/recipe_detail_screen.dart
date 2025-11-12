@@ -82,6 +82,21 @@ class RecipeDetailScreen extends ConsumerWidget {
                           color: Colors.white.withOpacity(0.9),
                           shape: BoxShape.circle,
                         ),
+                        child: const Icon(Icons.edit, color: AppColors.primary),
+                      ),
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              context.push(Routes.recipeEdit, extra: recipe);
+                            },
+                    ),
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
                         child: const Icon(Icons.delete, color: AppColors.error),
                       ),
                       onPressed: isLoading
@@ -111,19 +126,26 @@ class RecipeDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   // Stats
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
                       _buildStatChip(
                         Icons.timer_outlined,
                         recipe.formattedCookTime,
                         AppColors.primary,
                       ),
-                      const SizedBox(width: 12),
                       _buildStatChip(
                         Icons.shopping_basket_outlined,
                         '${recipe.ingredients.length} ingredients',
                         AppColors.secondary,
                       ),
+                      if (recipe.instructions.isNotEmpty)
+                        _buildStatChip(
+                          Icons.list_alt_outlined,
+                          '${recipe.instructions.length} steps',
+                          AppColors.success,
+                        ),
                     ],
                   ),
                   if (recipe.source != null) ...[
@@ -161,6 +183,15 @@ class RecipeDetailScreen extends ConsumerWidget {
                     return _buildIngredientItem(index + 1, ingredient);
                   }),
                   const SizedBox(height: 32),
+                  // Instructions Section
+                  _buildSectionTitle('Instructions'),
+                  const SizedBox(height: 16),
+                  ...recipe.instructions.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final instruction = entry.value;
+                    return _buildInstructionItem(index + 1, instruction);
+                  }),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -172,22 +203,41 @@ class RecipeDetailScreen extends ConsumerWidget {
 
   Widget _buildStatChip(IconData icon, String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 10),
           Text(
             text,
             style: TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
               color: color,
+              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -221,34 +271,58 @@ class RecipeDetailScreen extends ConsumerWidget {
 
   Widget _buildIngredientItem(int index, RecipeIngredient ingredient) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray200),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.gray200,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryLight,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Center(
               child: Text(
                 '$index',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  color: Colors.white,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 18),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,20 +330,101 @@ class RecipeDetailScreen extends ConsumerWidget {
                 Text(
                   ingredient.name,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
+                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${ingredient.quantity} ${ingredient.unit}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${ingredient.quantity} ${ingredient.unit}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.secondary,
+                    ),
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructionItem(int index, String instruction) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.gray200,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.secondary.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            margin: const EdgeInsets.only(top: 2),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.secondary,
+                  AppColors.secondaryLight,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.secondary.withOpacity(0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                '$index',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Text(
+              instruction,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppColors.textPrimary,
+                height: 1.7,
+                letterSpacing: 0.2,
+              ),
             ),
           ),
         ],
@@ -329,4 +484,5 @@ class RecipeDetailScreen extends ConsumerWidget {
     );
   }
 }
+
 

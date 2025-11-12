@@ -68,6 +68,51 @@ class RecipeController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  /// Update an existing recipe
+  Future<void> updateRecipe(Recipe recipe, {File? imageFile, String? oldImageUrl}) async {
+    final userId = _ref.read(currentUserIdProvider);
+    if (userId == null) {
+      throw Exception('No user logged in');
+    }
+
+    if (recipe.authorId != userId) {
+      throw Exception('Not authorized to update this recipe');
+    }
+
+    state = const AsyncValue.loading();
+    _ref.read(recipeErrorProvider.notifier).state = null;
+
+    try {
+      // If there's a new image, upload it
+      String? imageUrl = recipe.imageUrl;
+      if (imageFile != null) {
+        // Delete old image if exists
+        if (oldImageUrl != null && oldImageUrl.isNotEmpty) {
+          try {
+            await _firestoreService.deleteRecipeImage(oldImageUrl);
+          } catch (e) {
+            // Log but don't fail if image deletion fails
+            Logger.error('Failed to delete old recipe image', e, null, 'RecipeController');
+          }
+        }
+        // Upload new image
+        imageUrl = await _firestoreService.uploadRecipeImage(recipe.id, imageFile);
+      }
+
+      // Update recipe with new image URL if changed
+      final updatedRecipe = imageFile != null
+          ? recipe.copyWith(imageUrl: imageUrl, updatedAt: DateTime.now())
+          : recipe.copyWith(updatedAt: DateTime.now());
+
+      await _firestoreService.updateRecipe(updatedRecipe);
+      state = const AsyncValue.data(null);
+    } catch (e, stackTrace) {
+      state = AsyncValue.error(e, stackTrace);
+      _ref.read(recipeErrorProvider.notifier).state = e.toString();
+      rethrow;
+    }
+  }
+
   /// Delete a recipe
   Future<void> deleteRecipe(String recipeId, {String? imageUrl}) async {
     state = const AsyncValue.loading();

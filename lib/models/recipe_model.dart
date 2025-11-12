@@ -51,6 +51,7 @@ class Recipe {
   final String id;
   final String title;
   final List<RecipeIngredient> ingredients;
+  final List<String> instructions; // Step-by-step instructions
   final int cookTime; // in minutes
   final String? source;
   final String authorId;
@@ -62,6 +63,7 @@ class Recipe {
     required this.id,
     required this.title,
     required this.ingredients,
+    required this.instructions,
     required this.cookTime,
     this.source,
     required this.authorId,
@@ -78,6 +80,10 @@ class Recipe {
       title: data['title'] ?? '',
       ingredients: (data['ingredients'] as List<dynamic>?)
               ?.map((ing) => RecipeIngredient.fromMap(ing as Map<String, dynamic>))
+              .toList() ??
+          [],
+      instructions: (data['instructions'] as List<dynamic>?)
+              ?.map((inst) => inst.toString())
               .toList() ??
           [],
       cookTime: data['cookTime'] ?? 0,
@@ -98,6 +104,10 @@ class Recipe {
               ?.map((ing) => RecipeIngredient.fromMap(ing as Map<String, dynamic>))
               .toList() ??
           [],
+      instructions: (data['instructions'] as List<dynamic>?)
+              ?.map((inst) => inst.toString())
+              .toList() ??
+          [],
       cookTime: data['cookTime'] ?? 0,
       source: data['source'],
       authorId: data['authorId'] ?? '',
@@ -116,6 +126,7 @@ class Recipe {
     return {
       'title': title,
       'ingredients': ingredients.map((ing) => ing.toMap()).toList(),
+      'instructions': instructions,
       'cookTime': cookTime,
       'source': source,
       'authorId': authorId,
@@ -130,6 +141,7 @@ class Recipe {
     String? id,
     String? title,
     List<RecipeIngredient>? ingredients,
+    List<String>? instructions,
     int? cookTime,
     String? source,
     String? authorId,
@@ -141,6 +153,7 @@ class Recipe {
       id: id ?? this.id,
       title: title ?? this.title,
       ingredients: ingredients ?? this.ingredients,
+      instructions: instructions ?? this.instructions,
       cookTime: cookTime ?? this.cookTime,
       source: source ?? this.source,
       authorId: authorId ?? this.authorId,
@@ -165,7 +178,7 @@ class Recipe {
 
   @override
   String toString() {
-    return 'Recipe(id: $id, title: $title, ingredients: ${ingredients.length}, cookTime: $cookTime)';
+    return 'Recipe(id: $id, title: $title, ingredients: ${ingredients.length}, instructions: ${instructions.length}, cookTime: $cookTime)';
   }
 }
 

@@ -27,6 +27,7 @@ class Routes {
   static const String recipes = '/recipes';
   static const String recipeDetail = '/recipes/detail';
   static const String recipeAdd = '/recipes/add';
+  static const String recipeEdit = '/recipes/edit';
 }
 
 /// GoRouter provider
@@ -145,6 +146,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const RecipeAddScreen(),
         ),
+      ),
+      GoRoute(
+        path: Routes.recipeEdit,
+        name: 'recipe-edit',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Recipe;
+          return MaterialPage(
+            key: state.pageKey,
+            child: RecipeAddScreen(recipe: extra),
+          );
+        },
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
