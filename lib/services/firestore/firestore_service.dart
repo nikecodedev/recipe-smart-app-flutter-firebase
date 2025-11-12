@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/config/firebase_config.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../models/profile_model.dart';
+import '../../models/pantry_item_model.dart';
 import '../../core/utils/logger.dart';
 
 /// Service for managing user profiles in Firestore
@@ -150,6 +151,129 @@ class FirestoreService {
     } catch (e) {
       Logger.error('Failed to check user profile', e, null, 'FirestoreService');
       return false;
+    }
+  }
+
+  // ==================== PANTRY ITEMS METHODS ====================
+
+  /// Get all pantry items for a user, sorted by expiration date
+  Future<List<PantryItem>> getPantryItems(String userId) async {
+    try {
+      // Get all items (can't use orderBy with null values, so we'll sort in code)
+      final snapshot = await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection('pantry_items')
+          .get();
+
+      final items = snapshot.docs
+          .map((doc) => PantryItem.fromFirestore(doc))
+          .toList();
+
+      // Sort: items with expiration dates first (ascending), then items without dates
+      items.sort((a, b) {
+        if (a.expirationDate == null && b.expirationDate == null) {
+          return b.addedAt.compareTo(a.addedAt); // Newest first for items without dates
+        }
+        if (a.expirationDate == null) return 1; // Items without dates go to end
+        if (b.expirationDate == null) return -1;
+        return a.expirationDate!.compareTo(b.expirationDate!);
+      });
+
+      Logger.success('Retrieved ${items.length} pantry items for user: $userId', 'FirestoreService');
+      return items;
+    } catch (e) {
+      Logger.error('Failed to get pantry items', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Stream pantry items for real-time updates
+  Stream<List<PantryItem>> streamPantryItems(String userId) {
+    // Get all items (can't use orderBy with null values, so we'll sort in code)
+    return _firestore
+        .collection(FirebaseCollections.users)
+        .doc(userId)
+        .collection('pantry_items')
+        .snapshots()
+        .map((snapshot) {
+      final items = snapshot.docs
+          .map((doc) {
+            try {
+              return PantryItem.fromFirestore(doc);
+            } catch (e) {
+              Logger.error('Failed to parse pantry item', e, null, 'FirestoreService');
+              return null;
+            }
+          })
+          .whereType<PantryItem>()
+          .toList();
+
+      // Sort: items with expiration dates first (ascending), then items without dates
+      items.sort((a, b) {
+        if (a.expirationDate == null && b.expirationDate == null) {
+          return b.addedAt.compareTo(a.addedAt); // Newest first for items without dates
+        }
+        if (a.expirationDate == null) return 1; // Items without dates go to end
+        if (b.expirationDate == null) return -1;
+        return a.expirationDate!.compareTo(b.expirationDate!);
+      });
+
+      return items;
+    }).handleError((error) {
+      Logger.error('Error in pantry items stream', error, null, 'FirestoreService');
+      return <PantryItem>[];
+    });
+  }
+
+  /// Add a new pantry item
+  Future<String> addPantryItem(String userId, PantryItem item) async {
+    try {
+      final docRef = await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection('pantry_items')
+          .add(item.toMap());
+
+      Logger.success('Pantry item added: ${docRef.id}', 'FirestoreService');
+      return docRef.id;
+    } catch (e) {
+      Logger.error('Failed to add pantry item', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Update an existing pantry item
+  Future<void> updatePantryItem(String userId, PantryItem item) async {
+    try {
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection('pantry_items')
+          .doc(item.id)
+          .update(item.toMap());
+
+      Logger.success('Pantry item updated: ${item.id}', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to update pantry item', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Delete a pantry item
+  Future<void> deletePantryItem(String userId, String itemId) async {
+    try {
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection('pantry_items')
+          .doc(itemId)
+          .delete();
+
+      Logger.success('Pantry item deleted: $itemId', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to delete pantry item', e, null, 'FirestoreService');
+      rethrow;
     }
   }
 }

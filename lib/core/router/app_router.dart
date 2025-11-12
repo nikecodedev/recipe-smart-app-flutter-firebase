@@ -7,6 +7,9 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/pantry/presentation/screens/pantry_list_screen.dart';
+import '../../features/pantry/presentation/screens/pantry_edit_screen.dart';
+import '../../models/pantry_item_model.dart';
 
 /// Route names
 class Routes {
@@ -15,6 +18,8 @@ class Routes {
   static const String forgotPassword = '/forgot-password';
   static const String home = '/home';
   static const String profile = '/profile';
+  static const String pantry = '/pantry';
+  static const String pantryEdit = '/pantry/edit';
 }
 
 /// GoRouter provider
@@ -87,6 +92,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const ProfileScreen(),
         ),
+      ),
+      GoRoute(
+        path: Routes.pantry,
+        name: 'pantry',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const PantryListScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.pantryEdit,
+        name: 'pantry-edit',
+        pageBuilder: (context, state) {
+          final extra = state.extra as PantryItem?;
+          return MaterialPage(
+            key: state.pageKey,
+            child: PantryEditScreen(item: extra),
+          );
+        },
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

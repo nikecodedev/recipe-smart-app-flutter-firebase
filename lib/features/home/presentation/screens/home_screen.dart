@@ -256,9 +256,10 @@ class HomeScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.kitchen_outlined),
             title: const Text('Pantry'),
-            subtitle: const Text('Coming soon'),
-            enabled: false,
-            onTap: () {},
+            onTap: () {
+              Navigator.pop(context);
+              context.push(Routes.pantry);
+            },
           ),
           ListTile(
             leading: const Icon(Icons.restaurant_menu_outlined),
