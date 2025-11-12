@@ -7,14 +7,33 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/recipe_provider.dart';
 import '../../../../models/recipe_model.dart';
 import 'recipe_detail_screen.dart';
+import 'suggested_recipes_screen.dart';
 
-class RecipeListScreen extends ConsumerWidget {
+class RecipeListScreen extends ConsumerStatefulWidget {
   const RecipeListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final recipesAsync = ref.watch(allRecipesStreamProvider);
+  ConsumerState<RecipeListScreen> createState() => _RecipeListScreenState();
+}
 
+class _RecipeListScreenState extends ConsumerState<RecipeListScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -27,6 +46,17 @@ class RecipeListScreen extends ConsumerWidget {
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          indicatorColor: AppColors.primary,
+          indicatorWeight: 3,
+          tabs: const [
+            Tab(text: 'All Recipes'),
+            Tab(text: 'Suggested'),
+          ],
         ),
         actions: [
           Container(
@@ -47,83 +77,82 @@ class RecipeListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: recipesAsync.when(
-        data: (recipes) {
-          if (recipes.isEmpty) {
-            return _buildEmptyState(context);
-          }
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _AllRecipesTab(),
+          const SuggestedRecipesScreen(),
+        ],
+      ),
+    );
+  }
+}
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(allRecipesStreamProvider);
-            },
-            color: AppColors.primary,
-            child: CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  sliver: SliverToBoxAdapter(
-                    child: _buildStatsHeader(context, recipes.length),
-                  ),
+class _AllRecipesTab extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recipesAsync = ref.watch(allRecipesStreamProvider);
+
+    return recipesAsync.when(
+      data: (recipes) {
+        if (recipes.isEmpty) {
+          return _buildEmptyState(context);
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(allRecipesStreamProvider);
+          },
+          color: AppColors.primary,
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                sliver: SliverToBoxAdapter(
+                  child: _buildStatsHeader(context, recipes.length),
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _buildRecipeCard(context, recipes[index]),
-                      ),
-                      childCount: recipes.length,
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildRecipeCard(context, recipes[index]),
                     ),
+                    childCount: recipes.length,
                   ),
                 ),
-                const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
-              ],
-            ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 64,
-                color: AppColors.error,
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Error loading recipes: $error',
-                style: const TextStyle(color: AppColors.error),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(allRecipesStreamProvider);
-                },
-                child: const Text('Retry'),
-              ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
             ],
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.push(Routes.recipeAdd);
-        },
-        backgroundColor: AppColors.primary,
-        elevation: 4,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Add Recipe',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: AppColors.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading recipes: $error',
+              style: const TextStyle(color: AppColors.error),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                ref.invalidate(allRecipesStreamProvider);
+              },
+              child: const Text('Retry'),
+            ),
+          ],
         ),
       ),
     );
