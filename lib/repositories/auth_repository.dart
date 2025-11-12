@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth/firebase_auth_service.dart';
 import '../services/user/user_service.dart';
+import '../services/firestore/firestore_service.dart';
 import '../services/storage/local_storage_service.dart';
 import '../models/user_model.dart';
 import '../core/utils/logger.dart';
@@ -10,6 +11,7 @@ import '../core/utils/logger.dart';
 class AuthRepository {
   final FirebaseAuthService _authService = FirebaseAuthService();
   final UserService _userService = UserService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   /// Get current Firebase user
   User? get currentUser => _authService.currentUser;
@@ -41,13 +43,29 @@ class AuthRepository {
 
       final user = userCredential.user!;
 
-      // Create Firestore profile
+      // Create Firestore profile (UserModel for backward compatibility)
       await _userService.createUserProfile(
         userId: user.uid,
         email: email,
         displayName: displayName,
         photoURL: user.photoURL,
       );
+
+      // Create ProfileModel for profile/household module
+      try {
+        await _firestoreService.createUserProfile(
+          userId: user.uid,
+          name: displayName,
+          email: email,
+          location: null,
+          unitPreference: 'metric',
+          servingSize: 4,
+          householdMembers: [],
+        );
+      } catch (e) {
+        // If profile already exists or creation fails, log but don't fail registration
+        Logger.error('Failed to create profile model', e, null, 'AuthRepository');
+      }
 
       // Save to local storage
       await LocalStorageService.saveUserData(
@@ -89,13 +107,32 @@ class AuthRepository {
 
       if (userModel == null) {
         // Profile doesn't exist, create it
+        final displayName = user.displayName ?? email.split('@')[0];
         await _userService.createUserProfile(
           userId: user.uid,
           email: user.email!,
-          displayName: user.displayName ?? email.split('@')[0],
+          displayName: displayName,
           photoURL: user.photoURL,
         );
         userModel = await _userService.getUserProfile(user.uid);
+
+        // Also create ProfileModel if it doesn't exist
+        try {
+          final profileExists = await _firestoreService.userProfileExists(user.uid);
+          if (!profileExists) {
+            await _firestoreService.createUserProfile(
+              userId: user.uid,
+              name: displayName,
+              email: user.email!,
+              location: null,
+              unitPreference: 'metric',
+              servingSize: 4,
+              householdMembers: [],
+            );
+          }
+        } catch (e) {
+          Logger.error('Failed to create profile model', e, null, 'AuthRepository');
+        }
       }
 
       // Save to local storage
@@ -128,13 +165,32 @@ class AuthRepository {
 
       if (userModel == null) {
         // First time sign in, create profile
+        final displayName = user.displayName ?? user.email!.split('@')[0];
         await _userService.createUserProfile(
           userId: user.uid,
           email: user.email!,
-          displayName: user.displayName ?? user.email!.split('@')[0],
+          displayName: displayName,
           photoURL: user.photoURL,
         );
         userModel = await _userService.getUserProfile(user.uid);
+
+        // Also create ProfileModel if it doesn't exist
+        try {
+          final profileExists = await _firestoreService.userProfileExists(user.uid);
+          if (!profileExists) {
+            await _firestoreService.createUserProfile(
+              userId: user.uid,
+              name: displayName,
+              email: user.email!,
+              location: null,
+              unitPreference: 'metric',
+              servingSize: 4,
+              householdMembers: [],
+            );
+          }
+        } catch (e) {
+          Logger.error('Failed to create profile model', e, null, 'AuthRepository');
+        }
       }
 
       // Save to local storage

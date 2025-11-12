@@ -18,9 +18,9 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Smart Pantry'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(Icons.person_outline),
             onPressed: () {
-              // TODO: Navigate to settings
+              context.push(Routes.profile);
             },
           ),
         ],
@@ -285,11 +285,11 @@ class HomeScreen extends ConsumerWidget {
           const Divider(),
 
           ListTile(
-            leading: const Icon(Icons.settings_outlined),
-            title: const Text('Settings'),
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Profile'),
             onTap: () {
               Navigator.pop(context);
-              // TODO: Navigate to settings
+              context.push(Routes.profile);
             },
           ),
 

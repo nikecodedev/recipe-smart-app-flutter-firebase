@@ -6,6 +6,7 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
 
 /// Route names
 class Routes {
@@ -13,6 +14,7 @@ class Routes {
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
   static const String home = '/home';
+  static const String profile = '/profile';
 }
 
 /// GoRouter provider
@@ -76,6 +78,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => MaterialPage(
           key: state.pageKey,
           child: const HomeScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.profile,
+        name: 'profile',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const ProfileScreen(),
         ),
       ),
     ],
