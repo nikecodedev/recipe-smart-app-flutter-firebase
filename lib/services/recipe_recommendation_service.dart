@@ -61,11 +61,12 @@ class RecipeRecommendationService {
   }
 
   /// Get recommended recipes based on pantry items
-  /// Returns recipes where pantry ingredients cover ≥70% of recipe ingredients
+  /// Returns recipes that have at least one matching ingredient
+  /// Calculates match probability based on type and number of matching elements
   static List<RecipeRecommendation> getRecommendedRecipes({
     required List<PantryItem> pantryItems,
     required List<Recipe> allRecipes,
-    double minCoverage = 0.7, // 70% minimum coverage
+    double minCoverage = 0.0, // Show any recipe with at least one match
   }) {
     try {
       if (pantryItems.isEmpty) {
@@ -114,8 +115,22 @@ class RecipeRecommendationService {
           }
         }
 
-        // Calculate coverage percentage
-        final coverage = availableIngredients.length / recipe.ingredients.length;
+        // Only include recipes that have at least one matching ingredient
+        if (availableIngredients.isEmpty) continue;
+
+        // Calculate match probability based on:
+        // 1. Number of matching ingredients (weight: 70%)
+        // 2. Ratio of matched to total ingredients (weight: 30%)
+        final totalIngredients = recipe.ingredients.length;
+        final matchedCount = availableIngredients.length;
+        final matchRatio = matchedCount / totalIngredients;
+
+        // Weighted probability calculation
+        // Higher weight for having more matches, plus bonus for higher ratio
+        final matchScore = (matchedCount / totalIngredients) * 0.7 + matchRatio * 0.3;
+        
+        // Normalize to 0-1 range (ensuring it reflects actual coverage)
+        final coverage = matchRatio.clamp(0.0, 1.0);
 
         // Only include recipes that meet minimum coverage threshold
         if (coverage >= minCoverage) {
@@ -128,15 +143,22 @@ class RecipeRecommendationService {
         }
       }
 
-      // Sort by coverage percentage (highest first), then by recipe title
+      // Sort by match probability (coverage percentage) - highest first, then by number of matches
       recommendations.sort((a, b) {
+        // Primary sort: coverage percentage (match probability)
         final coverageCompare = b.coveragePercentage.compareTo(a.coveragePercentage);
         if (coverageCompare != 0) return coverageCompare;
+        
+        // Secondary sort: number of matched ingredients
+        final matchCountCompare = b.availableIngredients.length.compareTo(a.availableIngredients.length);
+        if (matchCountCompare != 0) return matchCountCompare;
+        
+        // Tertiary sort: recipe title
         return a.recipe.title.compareTo(b.recipe.title);
       });
 
       Logger.success(
-        'Found ${recommendations.length} recommended recipes (min coverage: ${(minCoverage * 100).toInt()}%)',
+        'Found ${recommendations.length} recommended recipes with matching ingredients',
         'RecipeRecommendationService',
       );
 

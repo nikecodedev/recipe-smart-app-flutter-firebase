@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/recipe_provider.dart';
 import '../../../../providers/profile_provider.dart';
+import '../../../../providers/shopping_list_provider.dart';
 import '../../../../models/recipe_model.dart';
 
 class RecipeDetailScreen extends ConsumerWidget {
@@ -173,6 +174,9 @@ class RecipeDetailScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
+                  const SizedBox(height: 32),
+                  // Generate Shopping List Button
+                  _buildShoppingListButton(context, ref),
                   const SizedBox(height: 32),
                   // Ingredients Section
                   _buildSectionTitle('Ingredients'),
@@ -430,6 +434,98 @@ class RecipeDetailScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildShoppingListButton(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(shoppingListControllerProvider).isLoading;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.secondary,
+            AppColors.secondaryDark,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.secondary.withOpacity(0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isLoading
+              ? null
+              : () => _generateShoppingList(context, ref),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isLoading)
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                else ...[
+                  const Icon(Icons.shopping_cart_rounded, color: Colors.white, size: 24),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Generate Shopping List',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generateShoppingList(BuildContext context, WidgetRef ref) async {
+    try {
+      final listId = await ref
+          .read(shoppingListControllerProvider.notifier)
+          .generateShoppingList(recipe);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Shopping list generated successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        // Navigate to shopping lists screen
+        context.push(Routes.shoppingLists);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate shopping list: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   void _showDeleteDialog(BuildContext context, WidgetRef ref) {

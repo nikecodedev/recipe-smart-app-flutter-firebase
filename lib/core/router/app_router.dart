@@ -14,6 +14,9 @@ import '../../features/recipes/presentation/screens/recipe_list_screen.dart';
 import '../../features/recipes/presentation/screens/recipe_detail_screen.dart';
 import '../../features/recipes/presentation/screens/recipe_add_screen.dart';
 import '../../models/recipe_model.dart';
+import '../../features/shopping/presentation/screens/shopping_list_screen.dart';
+import '../../features/shopping/presentation/screens/shopping_lists_screen.dart';
+import '../../models/shopping_list_model.dart';
 
 /// Route names
 class Routes {
@@ -28,6 +31,8 @@ class Routes {
   static const String recipeDetail = '/recipes/detail';
   static const String recipeAdd = '/recipes/add';
   static const String recipeEdit = '/recipes/edit';
+  static const String shoppingList = '/shopping-list';
+  static const String shoppingLists = '/shopping-lists';
 }
 
 /// GoRouter provider
@@ -155,6 +160,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           return MaterialPage(
             key: state.pageKey,
             child: RecipeAddScreen(recipe: extra),
+          );
+        },
+      ),
+      GoRoute(
+        path: Routes.shoppingLists,
+        name: 'shopping-lists',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const ShoppingListsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.shoppingList,
+        name: 'shopping-list',
+        pageBuilder: (context, state) {
+          final extra = state.extra as ShoppingList;
+          return MaterialPage(
+            key: state.pageKey,
+            child: ShoppingListScreen(shoppingList: extra),
           );
         },
       ),

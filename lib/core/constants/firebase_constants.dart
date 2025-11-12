@@ -4,7 +4,7 @@ class FirebaseCollections {
   static const String pantryItems = 'pantry_items';
   static const String recipes = 'recipes';
   static const String shoppingLists = 'shopping_lists';
-  static const String shoppingItems = 'shopping_items';
+  static const String shoppingListItems = 'items';
   static const String recommendations = 'recommendations';
   static const String categories = 'categories';
   static const String userActivity = 'user_activity';

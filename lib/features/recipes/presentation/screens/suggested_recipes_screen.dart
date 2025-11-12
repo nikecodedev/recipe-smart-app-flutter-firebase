@@ -113,7 +113,7 @@ class SuggestedRecipesScreen extends ConsumerWidget {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'Recipes where you have ${(recommendations.length > 0 && recommendations.first.coveragePercent >= 70) ? '70%+' : 'most'} of the ingredients',
+                                'Recipes with matching ingredients from your pantry. Match probability is calculated based on the number and type of matching elements.',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textPrimary,
@@ -344,7 +344,7 @@ class SuggestedRecipesScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  // Coverage Badge
+                  // Match Probability Badge
                   Positioned(
                     top: 12,
                     right: 12,
@@ -355,10 +355,7 @@ class SuggestedRecipesScreen extends ConsumerWidget {
                       ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            AppColors.success,
-                            AppColors.success.withOpacity(0.8),
-                          ],
+                          colors: _getMatchColorGradient(coverage),
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
@@ -372,8 +369,8 @@ class SuggestedRecipesScreen extends ConsumerWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.check_circle_rounded,
+                          Icon(
+                            _getMatchIcon(coverage),
                             color: Colors.white,
                             size: 16,
                           ),
@@ -433,9 +430,84 @@ class SuggestedRecipesScreen extends ConsumerWidget {
                           ),
                       ],
                     ),
-                    // Missing Ingredients
+                    // Match Details
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.success.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  '${recommendation.availableIngredients.length}',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Matched',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.warning.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  '$missingCount',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.warning,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Missing',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.warning,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Missing Ingredients List
                     if (missingCount > 0) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -546,6 +618,35 @@ class SuggestedRecipesScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  List<Color> _getMatchColorGradient(int coverage) {
+    if (coverage >= 80) {
+      return [
+        AppColors.success,
+        AppColors.success.withOpacity(0.8),
+      ];
+    } else if (coverage >= 50) {
+      return [
+        AppColors.primary,
+        AppColors.primary.withOpacity(0.8),
+      ];
+    } else {
+      return [
+        AppColors.warning,
+        AppColors.warning.withOpacity(0.8),
+      ];
+    }
+  }
+
+  IconData _getMatchIcon(int coverage) {
+    if (coverage >= 80) {
+      return Icons.check_circle_rounded;
+    } else if (coverage >= 50) {
+      return Icons.thumb_up_rounded;
+    } else {
+      return Icons.info_rounded;
+    }
   }
 }
 

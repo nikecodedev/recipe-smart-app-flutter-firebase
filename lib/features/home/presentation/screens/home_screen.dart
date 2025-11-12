@@ -271,10 +271,11 @@ class HomeScreen extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.shopping_cart_outlined),
-            title: const Text('Shopping List'),
-            subtitle: const Text('Coming soon'),
-            enabled: false,
-            onTap: () {},
+            title: const Text('Shopping Lists'),
+            onTap: () {
+              Navigator.pop(context);
+              context.push(Routes.shoppingLists);
+            },
           ),
           ListTile(
             leading: const Icon(Icons.lightbulb_outline),

@@ -23,7 +23,7 @@ final recipeRecommendationsStreamProvider =
             RecipeRecommendationService.getRecommendedRecipes(
               pantryItems: pantryItems,
               allRecipes: recipes,
-              minCoverage: 0.7, // 70% minimum coverage
+              minCoverage: 0.0, // Show any recipe with at least one match
             ),
           );
         },
@@ -54,7 +54,7 @@ final recipeRecommendationsProvider =
     return RecipeRecommendationService.getRecommendedRecipes(
       pantryItems: pantryItems,
       allRecipes: recipes,
-      minCoverage: 0.7,
+      minCoverage: 0.0, // Show any recipe with at least one match
     );
   } catch (e) {
     return [];

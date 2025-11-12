@@ -6,6 +6,7 @@ import '../../core/constants/firebase_constants.dart';
 import '../../models/profile_model.dart';
 import '../../models/pantry_item_model.dart';
 import '../../models/recipe_model.dart';
+import '../../models/shopping_list_model.dart';
 import '../../core/utils/logger.dart';
 
 /// Service for managing user profiles in Firestore
@@ -472,6 +473,345 @@ class FirestoreService {
       Logger.error('Failed to delete recipe image', e, null, 'FirestoreService');
       rethrow;
     }
+  }
+
+  // ==================== SHOPPING LIST METHODS ====================
+
+  /// Generate a shopping list from a recipe's missing ingredients
+  /// Compares recipe ingredients with user's pantry items
+  Future<String> generateShoppingList({
+    required String userId,
+    required Recipe recipe,
+    required List<PantryItem> pantryItems,
+  }) async {
+    try {
+      final now = DateTime.now();
+      final listId = _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .doc()
+          .id;
+
+      // Normalize pantry item names for comparison
+      final pantryNames = pantryItems
+          .map((item) => _normalizeIngredientName(item.name))
+          .toSet();
+
+      // Find missing ingredients
+      final missingIngredients = <RecipeIngredient>[];
+      for (final ingredient in recipe.ingredients) {
+        final normalizedName = _normalizeIngredientName(ingredient.name);
+        bool found = false;
+
+        // Check if ingredient exists in pantry
+        for (final pantryName in pantryNames) {
+          if (_ingredientNamesMatch(normalizedName, pantryName)) {
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          missingIngredients.add(ingredient);
+        }
+      }
+
+      if (missingIngredients.isEmpty) {
+        throw Exception('All ingredients are already in your pantry!');
+      }
+
+      // Create shopping list document
+      final shoppingList = {
+        'name': 'Shopping List for ${recipe.title}',
+        'recipeId': recipe.id,
+        'recipeTitle': recipe.title,
+        'createdAt': Timestamp.fromDate(now),
+        'updatedAt': Timestamp.fromDate(now),
+      };
+
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .doc(listId)
+          .set(shoppingList);
+
+      // Add items to subcollection
+      final batch = _firestore.batch();
+      for (final ingredient in missingIngredients) {
+        final itemId = _firestore
+            .collection(FirebaseCollections.users)
+            .doc(userId)
+            .collection(FirebaseCollections.shoppingLists)
+            .doc(listId)
+            .collection(FirebaseCollections.shoppingListItems)
+            .doc()
+            .id;
+
+        // Generate placeholder affiliate links
+        final amazonLink = _generateAmazonLink(ingredient.name);
+        final walmartLink = _generateWalmartLink(ingredient.name);
+
+        final itemRef = _firestore
+            .collection(FirebaseCollections.users)
+            .doc(userId)
+            .collection(FirebaseCollections.shoppingLists)
+            .doc(listId)
+            .collection(FirebaseCollections.shoppingListItems)
+            .doc(itemId);
+
+        batch.set(itemRef, {
+          'name': ingredient.name,
+          'quantity': ingredient.quantity,
+          'unit': ingredient.unit,
+          'isChecked': false,
+          'amazonLink': amazonLink,
+          'walmartLink': walmartLink,
+          'addedAt': Timestamp.fromDate(now),
+        });
+      }
+
+      await batch.commit();
+
+      Logger.success(
+        'Shopping list generated: $listId with ${missingIngredients.length} items',
+        'FirestoreService',
+      );
+      return listId;
+    } catch (e) {
+      Logger.error('Failed to generate shopping list', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Get all shopping lists for a user
+  Future<List<ShoppingList>> getShoppingLists(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final lists = snapshot.docs
+          .map((doc) => ShoppingList.fromFirestore(doc))
+          .toList();
+
+      Logger.success('Retrieved ${lists.length} shopping lists', 'FirestoreService');
+      return lists;
+    } catch (e) {
+      Logger.error('Failed to get shopping lists', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Stream shopping lists for real-time updates
+  Stream<List<ShoppingList>> streamShoppingLists(String userId) {
+    return _firestore
+        .collection(FirebaseCollections.users)
+        .doc(userId)
+        .collection(FirebaseCollections.shoppingLists)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => ShoppingList.fromFirestore(doc))
+          .toList();
+    }).handleError((error) {
+      Logger.error('Error in shopping lists stream', error, null, 'FirestoreService');
+      return <ShoppingList>[];
+    });
+  }
+
+  /// Get shopping list items
+  Future<List<ShoppingListItem>> getShoppingListItems(
+    String userId,
+    String listId,
+  ) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .doc(listId)
+          .collection(FirebaseCollections.shoppingListItems)
+          .orderBy('addedAt')
+          .get();
+
+      final items = snapshot.docs
+          .map((doc) => ShoppingListItem.fromFirestore(doc))
+          .toList();
+
+      Logger.success(
+        'Retrieved ${items.length} shopping list items',
+        'FirestoreService',
+      );
+      return items;
+    } catch (e) {
+      Logger.error(
+        'Failed to get shopping list items',
+        e,
+        null,
+        'FirestoreService',
+      );
+      rethrow;
+    }
+  }
+
+  /// Stream shopping list items for real-time updates
+  Stream<List<ShoppingListItem>> streamShoppingListItems(
+    String userId,
+    String listId,
+  ) {
+    return _firestore
+        .collection(FirebaseCollections.users)
+        .doc(userId)
+        .collection(FirebaseCollections.shoppingLists)
+        .doc(listId)
+        .collection(FirebaseCollections.shoppingListItems)
+        .orderBy('addedAt')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => ShoppingListItem.fromFirestore(doc))
+          .toList();
+    }).handleError((error) {
+      Logger.error(
+        'Error in shopping list items stream',
+        error,
+        null,
+        'FirestoreService',
+      );
+      return <ShoppingListItem>[];
+    });
+  }
+
+  /// Update shopping item checked status
+  Future<void> updateShoppingItemStatus({
+    required String userId,
+    required String listId,
+    required String itemId,
+    required bool isChecked,
+  }) async {
+    try {
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .doc(listId)
+          .collection(FirebaseCollections.shoppingListItems)
+          .doc(itemId)
+          .update({
+        'isChecked': isChecked,
+      });
+
+      // Update shopping list updatedAt
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .doc(listId)
+          .update({
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+
+      Logger.success(
+        'Shopping item status updated: $itemId -> $isChecked',
+        'FirestoreService',
+      );
+    } catch (e) {
+      Logger.error(
+        'Failed to update shopping item status',
+        e,
+        null,
+        'FirestoreService',
+      );
+      rethrow;
+    }
+  }
+
+  /// Delete a shopping list
+  Future<void> deleteShoppingList(String userId, String listId) async {
+    try {
+      // Delete all items first
+      final itemsSnapshot = await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .doc(listId)
+          .collection(FirebaseCollections.shoppingListItems)
+          .get();
+
+      final batch = _firestore.batch();
+      for (final doc in itemsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      // Delete the list
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .doc(listId)
+          .delete();
+
+      Logger.success('Shopping list deleted: $listId', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to delete shopping list', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Helper: Normalize ingredient name for comparison
+  String _normalizeIngredientName(String name) {
+    return name
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'[^\w\s]'), '');
+  }
+
+  /// Helper: Check if two ingredient names match
+  bool _ingredientNamesMatch(String name1, String name2) {
+    final normalized1 = _normalizeIngredientName(name1);
+    final normalized2 = _normalizeIngredientName(name2);
+
+    if (normalized1 == normalized2) return true;
+
+    if (normalized1.contains(normalized2) || normalized2.contains(normalized1)) {
+      final shorter = normalized1.length < normalized2.length ? normalized1 : normalized2;
+      final longer = normalized1.length >= normalized2.length ? normalized1 : normalized2;
+      if (shorter.length >= (longer.length * 0.7)) {
+        return true;
+      }
+    }
+
+    final singular1 = normalized1.replaceAll(RegExp(r's$'), '');
+    final singular2 = normalized2.replaceAll(RegExp(r's$'), '');
+    if (singular1 == singular2 && singular1.length > 2) return true;
+
+    return false;
+  }
+
+  /// Generate placeholder Amazon affiliate link
+  /// TODO: Replace with real Amazon Product Advertising API integration
+  String _generateAmazonLink(String itemName) {
+    // Placeholder URL structure: https://www.amazon.com/s?k={itemName}
+    // In production, use Amazon Product Advertising API to get actual product links
+    final encodedName = Uri.encodeComponent(itemName);
+    return 'https://www.amazon.com/s?k=$encodedName&tag=your-affiliate-tag';
+  }
+
+  /// Generate placeholder Walmart affiliate link
+  /// TODO: Replace with real Walmart Affiliate API integration
+  String _generateWalmartLink(String itemName) {
+    // Placeholder URL structure: https://www.walmart.com/search?q={itemName}
+    // In production, use Walmart Affiliate API to get actual product links
+    final encodedName = Uri.encodeComponent(itemName);
+    return 'https://www.walmart.com/search?q=$encodedName&affiliateId=your-affiliate-id';
   }
 }
 
