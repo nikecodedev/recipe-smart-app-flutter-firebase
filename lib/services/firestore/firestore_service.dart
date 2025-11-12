@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import '../../core/config/firebase_config.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../models/profile_model.dart';
 import '../../models/pantry_item_model.dart';
+import '../../models/recipe_model.dart';
 import '../../core/utils/logger.dart';
 
 /// Service for managing user profiles in Firestore
@@ -273,6 +276,200 @@ class FirestoreService {
       Logger.success('Pantry item deleted: $itemId', 'FirestoreService');
     } catch (e) {
       Logger.error('Failed to delete pantry item', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  // ==================== RECIPE METHODS ====================
+
+  /// Get all recipes from Firestore
+  Future<List<Recipe>> getAllRecipes() async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirebaseCollections.recipes)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final recipes = snapshot.docs
+          .map((doc) {
+            try {
+              return Recipe.fromFirestore(doc);
+            } catch (e) {
+              Logger.error('Failed to parse recipe', e, null, 'FirestoreService');
+              return null;
+            }
+          })
+          .whereType<Recipe>()
+          .toList();
+
+      Logger.success('Retrieved ${recipes.length} recipes', 'FirestoreService');
+      return recipes;
+    } catch (e) {
+      Logger.error('Failed to get all recipes', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Stream all recipes for real-time updates
+  Stream<List<Recipe>> streamAllRecipes() {
+    return _firestore
+        .collection(FirebaseCollections.recipes)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      final recipes = snapshot.docs
+          .map((doc) {
+            try {
+              return Recipe.fromFirestore(doc);
+            } catch (e) {
+              Logger.error('Failed to parse recipe', e, null, 'FirestoreService');
+              return null;
+            }
+          })
+          .whereType<Recipe>()
+          .toList();
+      return recipes;
+    }).handleError((error) {
+      Logger.error('Error in recipes stream', error, null, 'FirestoreService');
+      return <Recipe>[];
+    });
+  }
+
+  /// Get recipes by a specific user
+  Future<List<Recipe>> getUserRecipes(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirebaseCollections.recipes)
+          .where('authorId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final recipes = snapshot.docs
+          .map((doc) {
+            try {
+              return Recipe.fromFirestore(doc);
+            } catch (e) {
+              Logger.error('Failed to parse recipe', e, null, 'FirestoreService');
+              return null;
+            }
+          })
+          .whereType<Recipe>()
+          .toList();
+
+      Logger.success('Retrieved ${recipes.length} recipes for user: $userId', 'FirestoreService');
+      return recipes;
+    } catch (e) {
+      Logger.error('Failed to get user recipes', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Stream user recipes for real-time updates
+  Stream<List<Recipe>> streamUserRecipes(String userId) {
+    return _firestore
+        .collection(FirebaseCollections.recipes)
+        .where('authorId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      final recipes = snapshot.docs
+          .map((doc) {
+            try {
+              return Recipe.fromFirestore(doc);
+            } catch (e) {
+              Logger.error('Failed to parse recipe', e, null, 'FirestoreService');
+              return null;
+            }
+          })
+          .whereType<Recipe>()
+          .toList();
+      return recipes;
+    }).handleError((error) {
+      Logger.error('Error in user recipes stream', error, null, 'FirestoreService');
+      return <Recipe>[];
+    });
+  }
+
+  /// Add a new recipe
+  Future<String> addRecipe(Recipe recipe) async {
+    try {
+      // Use the recipe's ID if provided, otherwise let Firestore generate one
+      final docRef = recipe.id.isNotEmpty
+          ? _firestore.collection(FirebaseCollections.recipes).doc(recipe.id)
+          : _firestore.collection(FirebaseCollections.recipes).doc();
+
+      await docRef.set(recipe.copyWith(id: docRef.id).toMap());
+
+      Logger.success('Recipe added: ${docRef.id}', 'FirestoreService');
+      return docRef.id;
+    } catch (e) {
+      Logger.error('Failed to add recipe', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Update an existing recipe
+  Future<void> updateRecipe(Recipe recipe) async {
+    try {
+      await _firestore
+          .collection(FirebaseCollections.recipes)
+          .doc(recipe.id)
+          .update(recipe.toMap());
+
+      Logger.success('Recipe updated: ${recipe.id}', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to update recipe', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Delete a recipe
+  Future<void> deleteRecipe(String recipeId) async {
+    try {
+      await _firestore
+          .collection(FirebaseCollections.recipes)
+          .doc(recipeId)
+          .delete();
+
+      Logger.success('Recipe deleted: $recipeId', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to delete recipe', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Upload recipe image to Firebase Storage
+  Future<String> uploadRecipeImage(String recipeId, File imageFile) async {
+    try {
+      final storage = FirebaseStorage.instance;
+      final ref = storage
+          .ref()
+          .child('recipes')
+          .child(recipeId)
+          .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+      final uploadTask = ref.putFile(imageFile);
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      Logger.success('Recipe image uploaded: $downloadUrl', 'FirestoreService');
+      return downloadUrl;
+    } catch (e) {
+      Logger.error('Failed to upload recipe image', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Delete recipe image from Firebase Storage
+  Future<void> deleteRecipeImage(String imageUrl) async {
+    try {
+      final storage = FirebaseStorage.instance;
+      final ref = storage.refFromURL(imageUrl);
+      await ref.delete();
+
+      Logger.success('Recipe image deleted', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to delete recipe image', e, null, 'FirestoreService');
       rethrow;
     }
   }

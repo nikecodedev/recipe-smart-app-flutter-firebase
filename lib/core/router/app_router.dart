@@ -10,6 +10,10 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/pantry/presentation/screens/pantry_list_screen.dart';
 import '../../features/pantry/presentation/screens/pantry_edit_screen.dart';
 import '../../models/pantry_item_model.dart';
+import '../../features/recipes/presentation/screens/recipe_list_screen.dart';
+import '../../features/recipes/presentation/screens/recipe_detail_screen.dart';
+import '../../features/recipes/presentation/screens/recipe_add_screen.dart';
+import '../../models/recipe_model.dart';
 
 /// Route names
 class Routes {
@@ -20,6 +24,9 @@ class Routes {
   static const String profile = '/profile';
   static const String pantry = '/pantry';
   static const String pantryEdit = '/pantry/edit';
+  static const String recipes = '/recipes';
+  static const String recipeDetail = '/recipes/detail';
+  static const String recipeAdd = '/recipes/add';
 }
 
 /// GoRouter provider
@@ -111,6 +118,33 @@ final routerProvider = Provider<GoRouter>((ref) {
             child: PantryEditScreen(item: extra),
           );
         },
+      ),
+      GoRoute(
+        path: Routes.recipes,
+        name: 'recipes',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const RecipeListScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.recipeDetail,
+        name: 'recipe-detail',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Recipe;
+          return MaterialPage(
+            key: state.pageKey,
+            child: RecipeDetailScreen(recipe: extra),
+          );
+        },
+      ),
+      GoRoute(
+        path: Routes.recipeAdd,
+        name: 'recipe-add',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const RecipeAddScreen(),
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
