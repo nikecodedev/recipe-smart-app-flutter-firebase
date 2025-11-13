@@ -7,6 +7,8 @@ import '../../models/profile_model.dart';
 import '../../models/pantry_item_model.dart';
 import '../../models/recipe_model.dart';
 import '../../models/shopping_list_model.dart';
+import '../../models/feedback_model.dart';
+import '../../models/user_model.dart';
 import '../../core/utils/logger.dart';
 
 /// Service for managing user profiles in Firestore
@@ -155,6 +157,23 @@ class FirestoreService {
     } catch (e) {
       Logger.error('Failed to check user profile', e, null, 'FirestoreService');
       return false;
+    }
+  }
+
+  /// Update user's FCM token
+  Future<void> updateUserFCMToken(String userId, String fcmToken) async {
+    try {
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .update({
+        'fcmToken': fcmToken,
+        'fcmTokenUpdatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+      Logger.success('FCM token updated for user: $userId', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to update FCM token', e, null, 'FirestoreService');
+      rethrow;
     }
   }
 
@@ -812,6 +831,257 @@ class FirestoreService {
     // In production, use Walmart Affiliate API to get actual product links
     final encodedName = Uri.encodeComponent(itemName);
     return 'https://www.walmart.com/search?q=$encodedName&affiliateId=your-affiliate-id';
+  }
+
+  // ==================== FEEDBACK METHODS ====================
+
+  /// Submit feedback
+  Future<String> submitFeedback({
+    required String userId,
+    required String message,
+    required FeedbackCategory category,
+  }) async {
+    try {
+      final now = DateTime.now();
+      final feedbackId = _firestore.collection(FirebaseCollections.feedback).doc().id;
+
+      final feedback = {
+        'userId': userId,
+        'message': message.trim(),
+        'category': category.name,
+        'createdAt': Timestamp.fromDate(now),
+      };
+
+      await _firestore
+          .collection(FirebaseCollections.feedback)
+          .doc(feedbackId)
+          .set(feedback);
+
+      Logger.success('Feedback submitted: $feedbackId', 'FirestoreService');
+      return feedbackId;
+    } catch (e) {
+      Logger.error('Failed to submit feedback', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Get user's feedback history
+  Future<List<Feedback>> getUserFeedback(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirebaseCollections.feedback)
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final feedbackList = snapshot.docs
+          .map((doc) => Feedback.fromFirestore(doc))
+          .toList();
+
+      Logger.success('Retrieved ${feedbackList.length} feedback items', 'FirestoreService');
+      return feedbackList;
+    } catch (e) {
+      Logger.error('Failed to get user feedback', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Stream user's feedback history
+  Stream<List<Feedback>> streamUserFeedback(String userId) {
+    return _firestore
+        .collection(FirebaseCollections.feedback)
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Feedback.fromFirestore(doc))
+          .toList();
+    }).handleError((error) {
+      Logger.error('Error in feedback stream', error, null, 'FirestoreService');
+      return <Feedback>[];
+    });
+  }
+
+  // ==================== ADMIN METHODS ====================
+
+  /// Get all users (Admin only)
+  Future<List<UserModel>> getAllUsers() async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirebaseCollections.users)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final users = snapshot.docs
+          .map((doc) {
+            try {
+              final data = doc.data();
+              return UserModel(
+                userId: doc.id,
+                email: data['email'] ?? '',
+                displayName: data['displayName'] ?? data['name'] ?? '',
+                photoURL: data['photoURL'],
+                role: data['role'] ?? 'user',
+                preferences: UserPreferences.fromMap(data['preferences'] ?? {}),
+                createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              );
+            } catch (e) {
+              Logger.error('Failed to parse user: ${doc.id}', e, null, 'FirestoreService');
+              return null;
+            }
+          })
+          .whereType<UserModel>()
+          .toList();
+
+      Logger.success('Retrieved ${users.length} users', 'FirestoreService');
+      return users;
+    } catch (e) {
+      Logger.error('Failed to get all users', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Update user role (Admin only)
+  Future<void> updateUserRole(String userId, String role) async {
+    try {
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .update({
+        'role': role,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+      Logger.success('User role updated: $userId -> $role', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to update user role', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Delete user (Admin only)
+  Future<void> deleteUser(String userId) async {
+    try {
+      // Delete user's pantry items
+      final pantrySnapshot = await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.pantryItems)
+          .get();
+      
+      final batch = _firestore.batch();
+      for (final doc in pantrySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Delete user's shopping lists
+      final shoppingListsSnapshot = await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .get();
+      
+      for (final listDoc in shoppingListsSnapshot.docs) {
+        // Delete shopping list items
+        final itemsSnapshot = await listDoc.reference
+            .collection(FirebaseCollections.shoppingListItems)
+            .get();
+        for (final itemDoc in itemsSnapshot.docs) {
+          batch.delete(itemDoc.reference);
+        }
+        batch.delete(listDoc.reference);
+      }
+
+      // Delete user profile
+      batch.delete(_firestore.collection(FirebaseCollections.users).doc(userId));
+
+      await batch.commit();
+      Logger.success('User deleted: $userId', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to delete user', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Delete any recipe (Admin only)
+  Future<void> deleteRecipeAsAdmin(String recipeId) async {
+    try {
+      // Get recipe to check for image
+      final recipeDoc = await _firestore
+          .collection(FirebaseCollections.recipes)
+          .doc(recipeId)
+          .get();
+
+      if (recipeDoc.exists) {
+        final data = recipeDoc.data();
+        final imageUrl = data?['imageUrl'] as String?;
+
+        // Delete recipe image if exists
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          try {
+            await deleteRecipeImage(imageUrl);
+          } catch (e) {
+            Logger.warning('Failed to delete recipe image: $e', 'FirestoreService');
+          }
+        }
+
+        // Delete recipe document
+        await _firestore
+            .collection(FirebaseCollections.recipes)
+            .doc(recipeId)
+            .delete();
+
+        Logger.success('Recipe deleted by admin: $recipeId', 'FirestoreService');
+      }
+    } catch (e) {
+      Logger.error('Failed to delete recipe as admin', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Get admin statistics
+  Future<Map<String, dynamic>> getAdminStatistics() async {
+    try {
+      final usersSnapshot = await _firestore.collection(FirebaseCollections.users).get();
+      final recipesSnapshot = await _firestore.collection(FirebaseCollections.recipes).get();
+      final feedbackSnapshot = await _firestore.collection(FirebaseCollections.feedback).get();
+
+      // Count pantry items across all users
+      int totalPantryItems = 0;
+      for (final userDoc in usersSnapshot.docs) {
+        final pantrySnapshot = await userDoc.reference
+            .collection(FirebaseCollections.pantryItems)
+            .get();
+        totalPantryItems += pantrySnapshot.docs.length;
+      }
+
+      // Count shopping lists
+      int totalShoppingLists = 0;
+      for (final userDoc in usersSnapshot.docs) {
+        final shoppingListsSnapshot = await userDoc.reference
+            .collection(FirebaseCollections.shoppingLists)
+            .get();
+        totalShoppingLists += shoppingListsSnapshot.docs.length;
+      }
+
+      final stats = {
+        'totalUsers': usersSnapshot.docs.length,
+        'totalRecipes': recipesSnapshot.docs.length,
+        'totalPantryItems': totalPantryItems,
+        'totalShoppingLists': totalShoppingLists,
+        'totalFeedback': feedbackSnapshot.docs.length,
+        'adminUsers': usersSnapshot.docs
+            .where((doc) => (doc.data()['role'] ?? 'user') == 'admin')
+            .length,
+      };
+
+      Logger.success('Admin statistics retrieved', 'FirestoreService');
+      return stats;
+    } catch (e) {
+      Logger.error('Failed to get admin statistics', e, null, 'FirestoreService');
+      rethrow;
+    }
   }
 }
 

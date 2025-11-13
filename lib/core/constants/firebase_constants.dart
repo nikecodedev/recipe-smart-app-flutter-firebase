@@ -8,6 +8,7 @@ class FirebaseCollections {
   static const String recommendations = 'recommendations';
   static const String categories = 'categories';
   static const String userActivity = 'user_activity';
+  static const String feedback = 'feedback';
 }
 
 /// Firebase Storage Paths

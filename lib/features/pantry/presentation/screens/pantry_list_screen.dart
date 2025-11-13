@@ -7,13 +7,44 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/pantry_provider.dart';
 import '../../../../models/pantry_item_model.dart';
 import '../../../../core/constants/firebase_constants.dart';
+import '../../../../core/widgets/search_bar_widget.dart';
+import '../../../../core/utils/filter_utils.dart';
+import '../../../../widgets/filter_chip_widget.dart';
 import 'pantry_edit_screen.dart';
 
-class PantryListScreen extends ConsumerWidget {
+class PantryListScreen extends ConsumerStatefulWidget {
   const PantryListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PantryListScreen> createState() => _PantryListScreenState();
+}
+
+class _PantryListScreenState extends ConsumerState<PantryListScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  PantryFilter _filter = PantryFilter();
+  bool _showFilters = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _updateFilter(PantryFilter newFilter) {
+    setState(() {
+      _filter = newFilter;
+    });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _filter = PantryFilter();
+      _searchController.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pantryItemsAsync = ref.watch(pantryItemsStreamProvider);
 
     return Scaffold(
@@ -30,6 +61,29 @@ class PantryListScreen extends ConsumerWidget {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _filter.hasActiveFilters
+                    ? AppColors.primary
+                    : AppColors.gray100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.tune_rounded,
+                color: _filter.hasActiveFilters
+                    ? Colors.white
+                    : AppColors.textSecondary,
+                size: 20,
+              ),
+            ),
+            onPressed: () {
+              setState(() {
+                _showFilters = !_showFilters;
+              });
+            },
+          ),
           Container(
             margin: const EdgeInsets.only(right: 8),
             child: IconButton(
@@ -50,14 +104,27 @@ class PantryListScreen extends ConsumerWidget {
       ),
       body: pantryItemsAsync.when(
         data: (items) {
+          // Apply filters
+          final filteredItems = _filter.applyFilters(items);
+
           if (items.isEmpty) {
             return _buildEmptyState(context);
           }
 
-          // Group items by expiration status
-          final expiredItems = items.where((item) => item.isExpired).toList();
-          final expiringSoonItems = items.where((item) => item.isExpiringSoon && !item.isExpired).toList();
-          final normalItems = items.where((item) => !item.isExpiringSoon && !item.isExpired).toList();
+          if (filteredItems.isEmpty && _filter.hasActiveFilters) {
+            return _buildNoResultsState(context);
+          }
+
+          // Group items by expiration status (only if no expiration filter is active)
+          final expiredItems = _filter.expirationStatus == null
+              ? filteredItems.where((item) => item.isExpired).toList()
+              : (_filter.expirationStatus == ExpirationFilter.expired ? filteredItems : []);
+          final expiringSoonItems = _filter.expirationStatus == null
+              ? filteredItems.where((item) => item.isExpiringSoon && !item.isExpired).toList()
+              : (_filter.expirationStatus == ExpirationFilter.expiringSoon ? filteredItems : []);
+          final normalItems = _filter.expirationStatus == null
+              ? filteredItems.where((item) => !item.isExpiringSoon && !item.isExpired).toList()
+              : (_filter.expirationStatus == ExpirationFilter.normal ? filteredItems : []);
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -66,10 +133,37 @@ class PantryListScreen extends ConsumerWidget {
             color: AppColors.primary,
             child: CustomScrollView(
               slivers: [
+                // Search Bar
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                   sliver: SliverToBoxAdapter(
-                    child: _buildStatsHeader(context, expiredItems.length, expiringSoonItems.length, items.length),
+                    child: SearchBarWidget(
+                      controller: _searchController,
+                      hintText: 'Search pantry items...',
+                      onChanged: (value) {
+                        _updateFilter(_filter.copyWith(searchQuery: value.isEmpty ? null : value));
+                      },
+                    ),
+                  ),
+                ),
+                // Filter Chips
+                if (_showFilters)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    sliver: SliverToBoxAdapter(
+                      child: _buildFilterSection(items),
+                    ),
+                  ),
+                // Stats Header
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: _buildStatsHeader(
+                      context,
+                      expiredItems.length,
+                      expiringSoonItems.length,
+                      filteredItems.length,
+                    ),
                   ),
                 ),
                 if (expiredItems.isNotEmpty) ...[
@@ -178,6 +272,190 @@ class PantryListScreen extends ConsumerWidget {
             fontWeight: FontWeight.w600,
             fontSize: 16,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterSection(List<PantryItem> allItems) {
+    final categories = getPantryCategories(allItems);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.gray200,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.gray200.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Filters',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (_filter.hasActiveFilters)
+                TextButton(
+                  onPressed: _clearFilters,
+                  child: const Text(
+                    'Clear All',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Expiration Status Filter
+          const Text(
+            'Expiration Status',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChipWidget(
+                label: 'All',
+                isSelected: _filter.expirationStatus == null || _filter.expirationStatus == ExpirationFilter.all,
+                onTap: () => _updateFilter(_filter.copyWith(expirationStatus: ExpirationFilter.all)),
+                icon: Icons.all_inclusive,
+              ),
+              FilterChipWidget(
+                label: 'Expired',
+                isSelected: _filter.expirationStatus == ExpirationFilter.expired,
+                onTap: () => _updateFilter(_filter.copyWith(expirationStatus: ExpirationFilter.expired)),
+                icon: Icons.warning_rounded,
+              ),
+              FilterChipWidget(
+                label: 'Expiring Soon',
+                isSelected: _filter.expirationStatus == ExpirationFilter.expiringSoon,
+                onTap: () => _updateFilter(_filter.copyWith(expirationStatus: ExpirationFilter.expiringSoon)),
+                icon: Icons.schedule_rounded,
+              ),
+              FilterChipWidget(
+                label: 'Normal',
+                isSelected: _filter.expirationStatus == ExpirationFilter.normal,
+                onTap: () => _updateFilter(_filter.copyWith(expirationStatus: ExpirationFilter.normal)),
+                icon: Icons.check_circle_rounded,
+              ),
+            ],
+          ),
+          if (categories.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text(
+              'Category',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilterChipWidget(
+                  label: 'All Categories',
+                  isSelected: _filter.category == null,
+                  onTap: () => _updateFilter(_filter.copyWith(category: null)),
+                ),
+                ...categories.map((category) => FilterChipWidget(
+                      label: category,
+                      isSelected: _filter.category == category,
+                      onTap: () => _updateFilter(_filter.copyWith(category: category)),
+                    )),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.search_off_rounded,
+                size: 64,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'No Items Found',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Try adjusting your filters or search query',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _clearFilters,
+              icon: const Icon(Icons.clear_all, color: Colors.white),
+              label: const Text(
+                'Clear Filters',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

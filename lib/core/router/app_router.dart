@@ -17,6 +17,13 @@ import '../../models/recipe_model.dart';
 import '../../features/shopping/presentation/screens/shopping_list_screen.dart';
 import '../../features/shopping/presentation/screens/shopping_lists_screen.dart';
 import '../../models/shopping_list_model.dart';
+import '../../features/feedback/presentation/screens/feedback_screen.dart';
+import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/screens/admin_recipes_screen.dart';
+import '../../features/admin/presentation/screens/admin_users_screen.dart';
+import '../../features/admin/presentation/screens/admin_categories_screen.dart';
+import '../../features/admin/presentation/screens/admin_feedback_screen.dart';
+import 'admin_guard.dart';
 
 /// Route names
 class Routes {
@@ -33,6 +40,12 @@ class Routes {
   static const String recipeEdit = '/recipes/edit';
   static const String shoppingList = '/shopping-list';
   static const String shoppingLists = '/shopping-lists';
+  static const String feedback = '/feedback';
+  static const String adminDashboard = '/admin';
+  static const String adminRecipes = '/admin/recipes';
+  static const String adminUsers = '/admin/users';
+  static const String adminCategories = '/admin/categories';
+  static const String adminFeedback = '/admin/feedback';
 }
 
 /// GoRouter provider
@@ -181,6 +194,75 @@ final routerProvider = Provider<GoRouter>((ref) {
             child: ShoppingListScreen(shoppingList: extra),
           );
         },
+      ),
+      GoRoute(
+        path: Routes.feedback,
+        name: 'feedback',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const FeedbackScreen(),
+        ),
+      ),
+      // Admin Routes (with access control)
+      GoRoute(
+        path: Routes.adminDashboard,
+        name: 'admin-dashboard',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: AdminGuard.buildAdminRoute(
+            context,
+            state,
+            const AdminDashboardScreen(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: Routes.adminRecipes,
+        name: 'admin-recipes',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: AdminGuard.buildAdminRoute(
+            context,
+            state,
+            const AdminRecipesScreen(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: Routes.adminUsers,
+        name: 'admin-users',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: AdminGuard.buildAdminRoute(
+            context,
+            state,
+            const AdminUsersScreen(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: Routes.adminCategories,
+        name: 'admin-categories',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: AdminGuard.buildAdminRoute(
+            context,
+            state,
+            const AdminCategoriesScreen(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: Routes.adminFeedback,
+        name: 'admin-feedback',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: AdminGuard.buildAdminRoute(
+            context,
+            state,
+            const AdminFeedbackScreen(),
+          ),
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

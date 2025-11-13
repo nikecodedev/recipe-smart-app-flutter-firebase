@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/auth_provider.dart';
+import '../../../../providers/notification_provider.dart';
+import '../../../../widgets/notification_banner.dart';
 import '../../../../core/utils/logger.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -17,6 +19,49 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Smart Pantry'),
         actions: [
+          // Notification Icon with Badge
+          Consumer(
+            builder: (context, ref, child) {
+              final notificationState = ref.watch(notificationStateProvider);
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    onPressed: () {
+                      // TODO: Show notification list
+                    },
+                  ),
+                  if (notificationState.unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          notificationState.unreadCount > 9
+                              ? '9+'
+                              : '${notificationState.unreadCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.person_outline),
             onPressed: () {
@@ -26,8 +71,10 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
       drawer: _buildDrawer(context, ref, userAsync),
-      body: Center(
-        child: Padding(
+      body: Stack(
+        children: [
+          Center(
+            child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -171,7 +218,11 @@ class HomeScreen extends ConsumerWidget {
               ),
             ],
           ),
-        ),
+            ),
+          ),
+          // Notification Overlay
+          const NotificationOverlay(),
+        ],
       ),
     );
   }
@@ -294,6 +345,53 @@ class HomeScreen extends ConsumerWidget {
               Navigator.pop(context);
               context.push(Routes.profile);
             },
+          ),
+          ListTile(
+            leading: const Icon(Icons.feedback_rounded, color: AppColors.secondary),
+            title: const Text('Support & Feedback'),
+            onTap: () {
+              Navigator.pop(context);
+              context.push(Routes.feedback);
+            },
+          ),
+          // Admin Section
+          userAsync.when(
+            data: (user) {
+              if (user?.isAdmin == true) {
+                return Column(
+                  children: [
+                    const Divider(),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.admin_panel_settings_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      title: const Text(
+                        'Admin Panel',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push(Routes.adminDashboard);
+                      },
+                    ),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
 
           const Spacer(),
