@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/recipe_recommendation_provider.dart';
 import '../../../../models/recipe_model.dart';
 import '../../../../services/recipe_recommendation_service.dart';
+import '../../../../widgets/modern_recipe_card.dart';
 import 'recipe_detail_screen.dart';
 
 class SuggestedRecipesScreen extends ConsumerWidget {
@@ -249,346 +250,110 @@ class SuggestedRecipesScreen extends ConsumerWidget {
     final recipe = recommendation.recipe;
     final coverage = recommendation.coveragePercent;
     final missingCount = recommendation.missingIngredients.length;
+    final matchColor = _getMatchColor(coverage);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.gray200,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+      child: Column(
+        children: [
+          ModernRecipeCard(
+            recipe: recipe,
+            matchPercentage: coverage.toString(),
+            matchColor: matchColor,
+            onTap: () {
+              context.push(Routes.recipeDetail, extra: recipe);
+            },
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            context.push(Routes.recipeDetail, extra: recipe);
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image
-              Stack(
-                children: [
-                  if (recipe.imageUrl != null)
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(20),
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: recipe.imageUrl!,
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          height: 200,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primary.withOpacity(0.3),
-                                AppColors.secondary.withOpacity(0.2),
-                              ],
-                            ),
-                          ),
-                          child: const Center(child: CircularProgressIndicator()),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          height: 200,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primary.withOpacity(0.3),
-                                AppColors.secondary.withOpacity(0.2),
-                              ],
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.image_not_supported,
-                            size: 48,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary.withOpacity(0.8),
-                            AppColors.secondary.withOpacity(0.6),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.restaurant_menu_rounded,
-                          size: 72,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  // Match Probability Badge
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: _getMatchColorGradient(coverage),
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _getMatchIcon(coverage),
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$coverage% Match',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+          // Missing Ingredients Section
+          if (missingCount > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 0),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.warning.withOpacity(0.2),
+                  width: 1,
+                ),
               ),
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      recipe.title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                        letterSpacing: 0.3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.shopping_cart_outlined,
+                        size: 18,
+                        color: AppColors.warning,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 16),
-                    // Stats
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        _buildInfoChip(
-                          Icons.timer_outlined,
-                          recipe.formattedCookTime,
-                          AppColors.primary,
-                        ),
-                        _buildInfoChip(
-                          Icons.shopping_basket_outlined,
-                          '${recipe.ingredients.length} ingredients',
-                          AppColors.secondary,
-                        ),
-                        if (recipe.instructions.isNotEmpty)
-                          _buildInfoChip(
-                            Icons.list_alt_outlined,
-                            '${recipe.instructions.length} steps',
-                            AppColors.success,
-                          ),
-                      ],
-                    ),
-                    // Match Details
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.success.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  '${recommendation.availableIngredients.length}',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.success,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Matched',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.success,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.warning.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  '$missingCount',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.warning,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Missing',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.warning,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Missing Ingredients List
-                    if (missingCount > 0) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.warning.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.shopping_cart_outlined,
-                                  size: 18,
-                                  color: AppColors.warning,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Missing $missingCount ingredient${missingCount > 1 ? 's' : ''}:',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.warning,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: recommendation.missingIngredients
-                                  .take(5)
-                                  .map((ingredient) => Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.warning.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          ingredient.name,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: AppColors.warning,
-                                          ),
-                                        ),
-                                      ))
-                                  .toList(),
-                            ),
-                            if (missingCount > 5)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Text(
-                                  '+ ${missingCount - 5} more',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.warning.withOpacity(0.8),
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ),
-                          ],
+                      const SizedBox(width: 8),
+                      Text(
+                        'Missing $missingCount ingredient${missingCount > 1 ? 's' : ''}:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.warning,
                         ),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: recommendation.missingIngredients
+                        .take(6)
+                        .map((ingredient) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: AppColors.warning.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                ingredient.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                  if (missingCount > 6)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '+ ${missingCount - 6} more',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.warning.withOpacity(0.8),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          ],
+        ],
       ),
     );
+  }
+
+  Color _getMatchColor(int percentage) {
+    if (percentage >= 80) return AppColors.success;
+    if (percentage >= 50) return AppColors.warning;
+    return AppColors.error;
   }
 
   Widget _buildInfoChip(IconData icon, String text, Color color) {
