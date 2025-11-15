@@ -116,7 +116,11 @@ class AdminUsersScreen extends ConsumerWidget {
               backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
               child: user.photoURL == null
                   ? Text(
-                      user.displayName[0].toUpperCase(),
+                      (user.displayName.isNotEmpty 
+                          ? user.displayName[0].toUpperCase() 
+                          : user.email.isNotEmpty 
+                              ? user.email[0].toUpperCase() 
+                              : 'U'),
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

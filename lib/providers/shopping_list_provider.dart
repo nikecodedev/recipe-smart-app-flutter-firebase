@@ -104,6 +104,34 @@ class ShoppingListController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  /// Update shopping list name
+  Future<void> updateShoppingList({
+    required String listId,
+    required String name,
+  }) async {
+    final userId = _ref.read(currentUserIdProvider);
+    if (userId == null) {
+      throw Exception('No user logged in');
+    }
+
+    state = const AsyncValue.loading();
+    _ref.read(shoppingListErrorProvider.notifier).state = null;
+
+    try {
+      await _firestoreService.updateShoppingList(
+        userId: userId,
+        listId: listId,
+        name: name,
+      );
+
+      state = const AsyncValue.data(null);
+    } catch (e, stackTrace) {
+      state = AsyncValue.error(e, stackTrace);
+      _ref.read(shoppingListErrorProvider.notifier).state = e.toString();
+      rethrow;
+    }
+  }
+
   /// Delete shopping list
   Future<void> deleteShoppingList(String listId) async {
     final userId = _ref.read(currentUserIdProvider);

@@ -1013,7 +1013,7 @@ class _RecipeAddScreenState extends ConsumerState<RecipeAddScreen> {
               child: isCompleted
                   ? const Icon(Icons.check, color: Colors.white, size: 18)
                   : Text(
-                      label[0],
+                      label.isNotEmpty ? label[0] : '?',
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.bold,

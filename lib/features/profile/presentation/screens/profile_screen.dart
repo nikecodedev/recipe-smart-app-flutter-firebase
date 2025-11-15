@@ -157,7 +157,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // Get user email from auth
       final authState = ref.read(authStateProvider);
       final email = authState.value?.email ?? '';
-      final displayName = authState.value?.displayName ?? email.split('@')[0];
+      final String displayName = (authState.value?.displayName?.isNotEmpty == true
+          ? authState.value!.displayName!
+          : (email.isNotEmpty && email.contains('@') 
+              ? email.split('@')[0] 
+              : 'User'));
 
       try {
         await ref.read(profileControllerProvider.notifier).createProfile(
@@ -419,7 +423,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           leading: CircleAvatar(
-                            child: Text(member.name[0].toUpperCase()),
+                            child: Text(
+                              member.name.isNotEmpty 
+                                  ? member.name[0].toUpperCase() 
+                                  : '?',
+                            ),
                           ),
                           title: Text(member.name),
                           subtitle: Text(
@@ -588,7 +596,11 @@ class _AddHouseholdMemberDialogState extends State<_AddHouseholdMemberDialog> {
                 items: _relationships.map((rel) {
                   return DropdownMenuItem(
                     value: rel,
-                    child: Text(rel[0].toUpperCase() + rel.substring(1)),
+                    child: Text(
+                      rel.isNotEmpty 
+                          ? (rel[0].toUpperCase() + (rel.length > 1 ? rel.substring(1) : ''))
+                          : rel,
+                    ),
                   );
                 }).toList(),
                 onChanged: (value) {

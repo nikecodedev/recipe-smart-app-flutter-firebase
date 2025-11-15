@@ -107,7 +107,11 @@ class AuthRepository {
 
       if (userModel == null) {
         // Profile doesn't exist, create it
-        final displayName = user.displayName ?? email.split('@')[0];
+        final String displayName = user.displayName?.isNotEmpty == true 
+            ? user.displayName! 
+            : (email.isNotEmpty && email.contains('@') 
+                ? email.split('@')[0] 
+                : 'User');
         await _userService.createUserProfile(
           userId: user.uid,
           email: user.email!,
@@ -165,7 +169,12 @@ class AuthRepository {
 
       if (userModel == null) {
         // First time sign in, create profile
-        final displayName = user.displayName ?? user.email!.split('@')[0];
+        final userEmail = user.email ?? '';
+        final String displayName = user.displayName?.isNotEmpty == true 
+            ? user.displayName! 
+            : (userEmail.isNotEmpty && userEmail.contains('@') 
+                ? userEmail.split('@')[0] 
+                : 'User');
         await _userService.createUserProfile(
           userId: user.uid,
           email: user.email!,

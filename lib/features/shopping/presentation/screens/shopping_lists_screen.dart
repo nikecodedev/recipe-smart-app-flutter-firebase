@@ -44,7 +44,7 @@ class ShoppingListsScreen extends ConsumerWidget {
               itemCount: lists.length,
               itemBuilder: (context, index) {
                 final list = lists[index];
-                return _buildListCard(context, list);
+                return _buildListCard(context, ref, list);
               },
             ),
           );
@@ -115,7 +115,9 @@ class ShoppingListsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildListCard(BuildContext context, ShoppingList list) {
+  Widget _buildListCard(BuildContext context, WidgetRef ref, ShoppingList list) {
+    final isLoading = ref.watch(shoppingListControllerProvider).isLoading;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -187,9 +189,42 @@ class ShoppingListsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: AppColors.textSecondary,
+                PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.more_vert,
+                    color: AppColors.textSecondary,
+                  ),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _showEditDialog(context, ref, list);
+                    } else if (value == 'delete') {
+                      _showDeleteDialog(context, ref, list);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      enabled: !isLoading,
+                      child: const Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                          SizedBox(width: 12),
+                          Text('Edit'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      enabled: !isLoading,
+                      child: const Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                          SizedBox(width: 12),
+                          Text('Delete'),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -212,6 +247,127 @@ class ShoppingListsScreen extends ConsumerWidget {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+
+  void _showEditDialog(BuildContext context, WidgetRef ref, ShoppingList list) {
+    final nameController = TextEditingController(text: list.name);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Edit Shopping List'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: 'List Name',
+            hintText: 'Enter shopping list name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = nameController.text.trim();
+              if (newName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('List name cannot be empty'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
+              }
+
+              try {
+                await ref.read(shoppingListControllerProvider.notifier).updateShoppingList(
+                      listId: list.id,
+                      name: newName,
+                    );
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Shopping list updated successfully'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, WidgetRef ref, ShoppingList list) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Shopping List'),
+        content: Text(
+          'Are you sure you want to delete "${list.name}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await ref.read(shoppingListControllerProvider.notifier).deleteShoppingList(list.id);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Shopping list deleted successfully'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

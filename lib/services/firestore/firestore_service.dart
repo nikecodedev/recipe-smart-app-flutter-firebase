@@ -751,6 +751,30 @@ class FirestoreService {
     }
   }
 
+  /// Update shopping list name
+  Future<void> updateShoppingList({
+    required String userId,
+    required String listId,
+    required String name,
+  }) async {
+    try {
+      await _firestore
+          .collection(FirebaseCollections.users)
+          .doc(userId)
+          .collection(FirebaseCollections.shoppingLists)
+          .doc(listId)
+          .update({
+        'name': name,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+
+      Logger.success('Shopping list updated: $listId', 'FirestoreService');
+    } catch (e) {
+      Logger.error('Failed to update shopping list', e, null, 'FirestoreService');
+      rethrow;
+    }
+  }
+
   /// Delete a shopping list
   Future<void> deleteShoppingList(String userId, String listId) async {
     try {

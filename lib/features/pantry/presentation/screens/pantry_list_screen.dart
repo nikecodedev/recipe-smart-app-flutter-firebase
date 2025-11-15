@@ -210,7 +210,7 @@ class _PantryListScreenState extends ConsumerState<PantryListScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                     sliver: SliverToBoxAdapter(
-                      child: _buildSectionHeader('✅ All Items', AppColors.textPrimary),
+                      child: _buildSectionHeader('✅ All Items', AppColors.primary),
                     ),
                   ),
                   SliverPadding(
