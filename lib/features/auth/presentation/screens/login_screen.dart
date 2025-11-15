@@ -67,39 +67,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-
-    try {
-      await ref.read(authControllerProvider.notifier).signInWithGoogle();
-
-      if (mounted) {
-        Logger.success('Google sign-in successful', 'LoginScreen');
-        context.go(Routes.home);
-      }
-    } catch (e) {
-      if (mounted) {
-        // Extract user-friendly error message
-        String errorMessage = e.toString();
-        if (errorMessage.contains('Exception: ')) {
-          errorMessage = errorMessage.replaceFirst('Exception: ', '');
-        }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -115,18 +82,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 
                 // Logo or App Name
                 Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.kitchen_outlined,
-                      size: 48,
-                      color: AppColors.primary,
-                    ),
+                  child: Image.asset(
+                    'logo/logococinaentucasa.png',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.contain,
                   ),
                 ),
 
@@ -134,7 +94,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 // Welcome Text
                 const Text(
-                  'Welcome Back!',
+                  'Cocina en tu Casa',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -143,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sign in to continue to Smart Pantry',
+                  'Sign in to continue',
                   style: TextStyle(
                     fontSize: 16,
                     color: AppColors.textSecondary,
@@ -199,35 +159,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   text: 'Sign In',
                   onPressed: _handleLogin,
                   isLoading: _isLoading,
-                ),
-
-                const SizedBox(height: 24),
-
-                // Divider
-                Row(
-                  children: [
-                    const Expanded(child: Divider()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'OR',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    const Expanded(child: Divider()),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Google Sign In Button
-                CustomOutlinedButton(
-                  text: 'Continue with Google',
-                  icon: Icons.g_mobiledata,
-                  onPressed: _isLoading ? null : _handleGoogleSignIn,
                 ),
 
                 const SizedBox(height: 32),

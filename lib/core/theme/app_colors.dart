@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 /// Application color palette
 class AppColors {
-  // Primary colors
-  static const Color primary = Color(0xFF6C63FF);
-  static const Color primaryDark = Color(0xFF5548E0);
-  static const Color primaryLight = Color(0xFF8A84FF);
+  // Primary colors - Red for Cocina en tu Casa
+  static const Color primary = Color(0xFFDC143C); // Crimson red
+  static const Color primaryDark = Color(0xFFB0112E);
+  static const Color primaryLight = Color(0xFFE63946);
 
-  // Secondary colors
-  static const Color secondary = Color(0xFFFF6584);
-  static const Color secondaryDark = Color(0xFFE04968);
-  static const Color secondaryLight = Color(0xFFFF8CA3);
+  // Secondary colors - Lighter red tones
+  static const Color secondary = Color(0xFFE63946);
+  static const Color secondaryDark = Color(0xFFC8102E);
+  static const Color secondaryLight = Color(0xFFFF6B7A);
 
   // Neutral colors
   static const Color black = Color(0xFF1A1A1A);

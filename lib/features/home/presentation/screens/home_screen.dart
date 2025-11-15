@@ -305,6 +305,14 @@ class HomeScreen extends ConsumerWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Profile'),
+            onTap: () {
+              Navigator.pop(context);
+              context.push(Routes.profile);
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.kitchen_outlined),
             title: const Text('Pantry'),
             onTap: () {
@@ -326,24 +334,6 @@ class HomeScreen extends ConsumerWidget {
             onTap: () {
               Navigator.pop(context);
               context.push(Routes.shoppingLists);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.lightbulb_outline),
-            title: const Text('Recommendations'),
-            subtitle: const Text('Coming soon'),
-            enabled: false,
-            onTap: () {},
-          ),
-
-          const Divider(),
-
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: const Text('Profile'),
-            onTap: () {
-              Navigator.pop(context);
-              context.push(Routes.profile);
             },
           ),
           ListTile(
