@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../providers/auth_provider.dart';
 import '../../../../providers/notification_provider.dart';
 import '../../../../providers/pantry_provider.dart';
 import '../../../../providers/recipe_provider.dart';
 import '../../../../providers/shopping_list_provider.dart';
 import '../../../../widgets/notification_banner.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../../providers/auth_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});

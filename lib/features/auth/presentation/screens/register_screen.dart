@@ -59,18 +59,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) {
         Logger.success('Registration successful', 'RegisterScreen');
         
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created successfully! Please verify your email.'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-
-        // Navigate to home
-        context.go(Routes.home);
+        // Navigate immediately to email verification screen
+        final email = _emailController.text.trim();
+        Logger.info('Navigating to email verification screen for: $email', 'RegisterScreen');
+        context.go('${Routes.emailVerification}?email=${Uri.encodeComponent(email)}');
       }
     } catch (e) {
+      // Log the full error for debugging
+      Logger.error('Registration error', e, null, 'RegisterScreen');
       if (mounted) {
         // Extract user-friendly error message
         String errorMessage = e.toString();

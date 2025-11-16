@@ -334,5 +334,27 @@ class AuthRepository {
       rethrow;
     }
   }
+
+  /// Resend email verification
+  Future<void> resendVerificationEmail() async {
+    try {
+      Logger.info('Resending verification email', 'AuthRepository');
+
+      await _authService.sendEmailVerification();
+
+      Logger.success('Verification email resent', 'AuthRepository');
+    } catch (e) {
+      Logger.error('Failed to resend verification email', e, null, 'AuthRepository');
+      rethrow;
+    }
+  }
+
+  /// Check if email is verified
+  bool get isEmailVerified => _authService.isEmailVerified;
+
+  /// Reload user data
+  Future<void> reloadUser() async {
+    await _authService.reloadUser();
+  }
 }
 

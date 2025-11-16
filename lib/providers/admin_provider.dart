@@ -3,8 +3,8 @@ import '../services/firestore/firestore_service.dart';
 import '../models/user_model.dart';
 import '../models/recipe_model.dart';
 import '../core/utils/logger.dart';
-import 'auth_provider.dart';
 import 'profile_provider.dart';
+import 'auth_provider.dart';
 
 /// Provider for admin controller
 final adminControllerProvider =

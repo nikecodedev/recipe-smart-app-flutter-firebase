@@ -159,6 +159,21 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       rethrow;
     }
   }
+
+  /// Resend email verification
+  Future<void> resendVerificationEmail() async {
+    state = const AsyncValue.loading();
+    _ref.read(authErrorProvider.notifier).state = null;
+
+    try {
+      await _authRepository.resendVerificationEmail();
+      state = const AsyncValue.data(null);
+    } catch (e, stackTrace) {
+      state = AsyncValue.error(e, stackTrace);
+      _ref.read(authErrorProvider.notifier).state = e.toString();
+      rethrow;
+    }
+  }
 }
 
 /// Provider for AuthController

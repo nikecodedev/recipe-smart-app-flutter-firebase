@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/notifications/fcm_service.dart';
 import '../services/firestore/firestore_service.dart';
-import 'auth_provider.dart';
 import 'profile_provider.dart';
+import 'auth_provider.dart';
 
 /// Provider for FCM Service
 final fcmServiceProvider = Provider<FCMService>((ref) => FCMService());

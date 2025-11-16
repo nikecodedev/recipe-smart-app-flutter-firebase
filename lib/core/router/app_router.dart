@@ -5,6 +5,9 @@ import '../../providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/auth/presentation/screens/email_verification_screen.dart';
+import '../../services/auth/firebase_auth_service.dart';
+import '../../repositories/auth_repository.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/pantry/presentation/screens/pantry_list_screen.dart';
@@ -30,6 +33,7 @@ class Routes {
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
+  static const String emailVerification = '/email-verification';
   static const String home = '/home';
   static const String profile = '/profile';
   static const String pantry = '/pantry';
@@ -51,28 +55,79 @@ class Routes {
 /// GoRouter provider
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
+  final authService = FirebaseAuthService();
+  final authRepository = ref.watch(authRepositoryProvider);
 
   return GoRouter(
     initialLocation: Routes.login,
-    redirect: (context, state) {
-      final isLoggedIn = authState.value != null;
+    redirect: (context, state) async {
+      // Check both provider state and Firebase Auth directly to handle timing issues
+      final authStateValue = authState.value;
+      final firebaseUser = authService.currentUser;
+      final isLoggedIn = authStateValue != null || firebaseUser != null;
+      
       final isGoingToLogin = state.matchedLocation == Routes.login;
       final isGoingToRegister = state.matchedLocation == Routes.register;
       final isGoingToForgotPassword =
           state.matchedLocation == Routes.forgotPassword;
+      final isGoingToEmailVerification =
+          state.matchedLocation == Routes.emailVerification;
+
+      // Always allow navigation to email verification screen
+      // This is needed right after registration when authState might not be updated yet
+      if (isGoingToEmailVerification) {
+        // Allow navigation - user might have just registered
+        // The screen itself will handle checking if user is logged in
+        return null;
+      }
 
       // If not logged in and not going to auth screens, redirect to login
       if (!isLoggedIn &&
           !isGoingToLogin &&
           !isGoingToRegister &&
-          !isGoingToForgotPassword) {
+          !isGoingToForgotPassword &&
+          !isGoingToEmailVerification) {
         return Routes.login;
       }
 
-      // If logged in and going to auth screens, redirect to home
-      if (isLoggedIn &&
-          (isGoingToLogin || isGoingToRegister || isGoingToForgotPassword)) {
-        return Routes.home;
+      // If logged in, check email verification
+      if (isLoggedIn) {
+        // Always allow navigation to email verification screen (needed after registration)
+        if (isGoingToEmailVerification) {
+          return null; // Allow navigation
+        }
+        
+        // Reload user to get latest verification status (important when coming from email link)
+        try {
+          await authRepository.reloadUser();
+        } catch (e) {
+          // Ignore errors, continue with current state
+        }
+        
+        final isEmailVerified = authRepository.isEmailVerified;
+        
+        // If email is verified, redirect to home if on auth screens
+        if (isEmailVerified) {
+          if (isGoingToLogin || isGoingToForgotPassword) {
+            return Routes.home;
+          }
+          // Allow staying on register screen
+        } else {
+          // If email is not verified
+          // Allow staying on register screen (for navigation to email verification)
+          if (isGoingToRegister) {
+            return null; // Allow navigation to register screen
+          }
+          // Allow access to login and forgot password for sign out
+          if (isGoingToLogin || isGoingToForgotPassword) {
+            return null; // Allow navigation
+          }
+          // For other pages, redirect to verification screen
+          final user = authStateValue ?? firebaseUser;
+          if (user?.email != null) {
+            return '${Routes.emailVerification}?email=${Uri.encodeComponent(user!.email!)}';
+          }
+        }
       }
 
       // No redirect needed
@@ -102,6 +157,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const ForgotPasswordScreen(),
         ),
+      ),
+      GoRoute(
+        path: Routes.emailVerification,
+        name: 'email-verification',
+        pageBuilder: (context, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return MaterialPage(
+            key: state.pageKey,
+            child: EmailVerificationScreen(email: email),
+          );
+        },
       ),
       GoRoute(
         path: Routes.home,

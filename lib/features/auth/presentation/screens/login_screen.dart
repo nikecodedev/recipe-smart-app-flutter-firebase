@@ -8,6 +8,7 @@ import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../providers/auth_provider.dart';
+import '../../../../repositories/auth_repository.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -42,7 +43,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (mounted) {
         Logger.success('Login successful', 'LoginScreen');
-        context.go(Routes.home);
+        
+        // Check if email is verified
+        final authRepository = AuthRepository();
+        await authRepository.reloadUser();
+        final isEmailVerified = authRepository.isEmailVerified;
+        
+        if (isEmailVerified) {
+          context.go(Routes.home);
+        } else {
+          // Redirect to email verification screen
+          context.go('${Routes.emailVerification}?email=${Uri.encodeComponent(_emailController.text.trim())}');
+        }
       }
     } catch (e) {
       if (mounted) {

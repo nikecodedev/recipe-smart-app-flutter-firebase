@@ -2,8 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/firestore/firestore_service.dart';
 import '../models/feedback_model.dart';
 import '../core/utils/logger.dart';
-import 'auth_provider.dart';
 import 'profile_provider.dart';
+import 'auth_provider.dart';
 
 /// Provider for feedback controller
 final feedbackControllerProvider =

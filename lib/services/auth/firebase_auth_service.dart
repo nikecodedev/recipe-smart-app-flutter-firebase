@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../core/config/firebase_config.dart';
+import '../../core/utils/logger.dart';
 
 /// Firebase Authentication Service
 /// Handles user authentication operations
@@ -44,7 +46,46 @@ class FirebaseAuthService {
       }
 
       // Send email verification
-      await userCredential.user?.sendEmailVerification();
+      final user = userCredential.user;
+      if (user != null && user.email != null) {
+        // Wait a moment for Firebase to fully process the user creation
+        await Future.delayed(const Duration(milliseconds: 1000));
+        
+        // Reload user to ensure we have the latest data
+        try {
+          await user.reload();
+        } catch (e) {
+          Logger.warning('Failed to reload user, continuing anyway', 'FirebaseAuthService');
+        }
+        
+        Logger.info('Sending verification email to: ${user.email}', 'FirebaseAuthService');
+        
+        // Send email verification - use simple method (most reliable, no redirect URL needed)
+        try {
+          await user.sendEmailVerification();
+          Logger.success('Verification email sent successfully to ${user.email}', 'FirebaseAuthService');
+        } catch (e) {
+          // Log the full error for debugging
+          Logger.error('Failed to send verification email', e, null, 'FirebaseAuthService');
+          Logger.error('Error type: ${e.runtimeType}, Error message: ${e.toString()}', null, null, 'FirebaseAuthService');
+          
+          // Check if it's a FirebaseAuthException for better error handling
+          if (e is FirebaseAuthException) {
+            final errorCode = e.code;
+            final errorMessage = e.message ?? e.toString();
+            Logger.error('Firebase Auth Error Code: $errorCode, Message: $errorMessage', null, null, 'FirebaseAuthService');
+            
+            // Re-throw with a user-friendly message
+            throw Exception('Failed to send verification email: ${_handleAuthException(e)}');
+          } else {
+            // Re-throw with the original error message
+            throw Exception('Failed to send verification email: ${e.toString()}');
+          }
+        }
+      } else {
+        Logger.warning('User or email is null, cannot send verification email', 'FirebaseAuthService');
+        throw Exception('User email is null, cannot send verification email');
+      }
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
@@ -209,12 +250,60 @@ class FirebaseAuthService {
         throw Exception('No user logged in');
       }
 
+      if (user.email == null) {
+        throw Exception('User email is null');
+      }
+
       if (!user.emailVerified) {
-        await user.sendEmailVerification();
+        Logger.info('Sending verification email to: ${user.email}', 'FirebaseAuthService');
+        
+        // Send email verification - use simple method (most reliable)
+        try {
+          await user.sendEmailVerification();
+          Logger.success('Verification email sent successfully to ${user.email}', 'FirebaseAuthService');
+        } catch (e) {
+          // Log the full error for debugging
+          Logger.error('Failed to send verification email', e, null, 'FirebaseAuthService');
+          Logger.error('Error type: ${e.runtimeType}, Error message: ${e.toString()}', null, null, 'FirebaseAuthService');
+          
+          // Check if it's a FirebaseAuthException for better error handling
+          if (e is FirebaseAuthException) {
+            final errorCode = e.code;
+            final errorMessage = e.message ?? e.toString();
+            Logger.error('Firebase Auth Error Code: $errorCode, Message: $errorMessage', null, null, 'FirebaseAuthService');
+            
+            // Re-throw with a user-friendly message
+            throw Exception('Failed to send verification email: ${_handleAuthException(e)}');
+          } else {
+            // Re-throw with the original error message
+            throw Exception('Failed to send verification email: ${e.toString()}');
+          }
+        }
+      } else {
+        Logger.info('Email already verified, no need to send verification email', 'FirebaseAuthService');
       }
     } catch (e) {
+      Logger.error('Email verification failed', e, null, 'FirebaseAuthService');
       throw Exception('Email verification failed: $e');
     }
+  }
+
+  /// Get email verification redirect URL for web
+  String _getEmailVerificationRedirectUrl() {
+    if (kIsWeb) {
+      try {
+        // For web, use the current origin with a simple path
+        // Firebase will redirect here after verification
+        final origin = Uri.base.origin;
+        // Use a simple path that will be handled by the router
+        return '$origin/#/home';
+      } catch (e) {
+        // Fallback: return empty to use default Firebase behavior
+        return '';
+      }
+    }
+    // For non-web platforms, return empty string (Firebase will handle it)
+    return '';
   }
 
   /// Check if email is verified
@@ -241,13 +330,25 @@ class FirebaseAuthService {
       case 'wrong-password':
         return 'Incorrect password. Please try again.';
       case 'too-many-requests':
-        return 'Too many failed attempts. Please try again later.';
+        return 'Too many failed attempts. Please wait a few minutes and try again.';
       case 'operation-not-allowed':
         return 'This operation is not allowed. Please contact support.';
       case 'invalid-credential':
         return 'Invalid credentials. Please check your email and password.';
+      case 'unauthorized-domain':
+        return 'This email domain is not allowed. Please contact support or use a different email address.';
+      case 'invalid-continue-uri':
+      case 'unauthorized-continue-uri':
+        return 'Email verification redirect URL is not authorized. Please contact support.';
       default:
-        return e.message ?? 'An authentication error occurred.';
+        // Check if error message contains domain-related keywords
+        final message = e.message ?? '';
+        if (message.toLowerCase().contains('domain') || 
+            message.toLowerCase().contains('allowlist') ||
+            message.toLowerCase().contains('not allowlisted')) {
+          return 'This email domain is not allowed. Please contact support or use a different email address.';
+        }
+        return message.isNotEmpty ? message : 'An authentication error occurred.';
     }
   }
 }
