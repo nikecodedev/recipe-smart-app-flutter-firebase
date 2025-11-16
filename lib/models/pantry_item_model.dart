@@ -9,6 +9,8 @@ class PantryItem {
   final String category;
   final DateTime? expirationDate;
   final DateTime addedAt;
+  final String? amazonUrl;
+  final String? walmartUrl;
 
   PantryItem({
     required this.id,
@@ -18,6 +20,8 @@ class PantryItem {
     required this.category,
     this.expirationDate,
     required this.addedAt,
+    this.amazonUrl,
+    this.walmartUrl,
   });
 
   /// Create PantryItem from Firestore document
@@ -33,6 +37,8 @@ class PantryItem {
           ? (data['expirationDate'] as Timestamp).toDate()
           : null,
       addedAt: (data['addedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      amazonUrl: data['amazonUrl'] as String?,
+      walmartUrl: data['walmartUrl'] as String?,
     );
   }
 
@@ -52,6 +58,8 @@ class PantryItem {
       addedAt: data['addedAt'] is Timestamp
           ? (data['addedAt'] as Timestamp).toDate()
           : DateTime.parse(data['addedAt'].toString()),
+      amazonUrl: data['amazonUrl'] as String?,
+      walmartUrl: data['walmartUrl'] as String?,
     );
   }
 
@@ -66,6 +74,8 @@ class PantryItem {
           ? Timestamp.fromDate(expirationDate!)
           : null,
       'addedAt': Timestamp.fromDate(addedAt),
+      'amazonUrl': amazonUrl,
+      'walmartUrl': walmartUrl,
     };
   }
 
@@ -78,6 +88,8 @@ class PantryItem {
     String? category,
     DateTime? expirationDate,
     DateTime? addedAt,
+    String? amazonUrl,
+    String? walmartUrl,
   }) {
     return PantryItem(
       id: id ?? this.id,
@@ -87,6 +99,8 @@ class PantryItem {
       category: category ?? this.category,
       expirationDate: expirationDate ?? this.expirationDate,
       addedAt: addedAt ?? this.addedAt,
+      amazonUrl: amazonUrl ?? this.amazonUrl,
+      walmartUrl: walmartUrl ?? this.walmartUrl,
     );
   }
 

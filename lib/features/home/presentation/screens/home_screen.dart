@@ -138,103 +138,7 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                    child: userAsync.when(
-                      data: (user) {
-                        if (user == null) {
-                          return const Column(
-                            children: [
-                              Text(
-                                'Welcome!',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-
-                        final hour = DateTime.now().hour;
-                        String greeting;
-                        if (hour < 12) {
-                          greeting = 'Good Morning';
-                        } else if (hour < 17) {
-                          greeting = 'Good Afternoon';
-                        } else {
-                          greeting = 'Good Evening';
-                        }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              greeting,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              (user.displayName.isNotEmpty 
-                                  ? user.displayName 
-                                  : (user.email.isNotEmpty ? user.email : 'User')),
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    user.isAdmin ? Icons.admin_panel_settings : Icons.person,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    user.isAdmin ? 'Admin' : 'User',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                      loading: () => const SizedBox(
-                        height: 100,
-                        child: Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        ),
-                      ),
-                      error: (error, _) => Text(
-                        'Error: $error',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
+                    child: const SizedBox.shrink(),
                   ),
                 ),
 
@@ -587,78 +491,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  String _getInitial(String displayName, String email) {
-    try {
-      final safeDisplayName = displayName.trim();
-      if (safeDisplayName.isNotEmpty) {
-        return safeDisplayName[0].toUpperCase();
-      }
-      final safeEmail = email.trim();
-      if (safeEmail.isNotEmpty) {
-        return safeEmail[0].toUpperCase();
-      }
-    } catch (e) {
-      // Fallback if any error occurs
-    }
-    return 'U';
-  }
-
   Widget _buildDrawer(
       BuildContext context, WidgetRef ref, AsyncValue userAsync) {
     return Drawer(
       child: Column(
         children: [
-          // User Profile Header
-          userAsync.when(
-            data: (user) {
-              if (user == null) return const SizedBox.shrink();
-
-              return UserAccountsDrawerHeader(
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                ),
-                currentAccountPicture: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: user.photoURL != null
-                      ? ClipOval(
-                          child: Image.network(
-                            user.photoURL!,
-                            width: 90,
-                            height: 90,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Text(
-                          _getInitial(
-                            user.displayName ?? '', 
-                            user.email ?? '',
-                          ),
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                ),
-                accountName: Text(
-                  (user.displayName.isNotEmpty 
-                      ? user.displayName 
-                      : (user.email.isNotEmpty ? user.email : 'User')),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                accountEmail: Text(user.email),
-              );
-            },
-            loading: () => const DrawerHeader(
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (_, __) => const DrawerHeader(
-              child: Text('Error loading profile'),
-            ),
-          ),
 
           // Menu Items
           ListTile(

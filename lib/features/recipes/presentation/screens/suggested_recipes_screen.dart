@@ -5,9 +5,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/recipe_recommendation_provider.dart';
+import '../../../../providers/shopping_list_provider.dart';
 import '../../../../models/recipe_model.dart';
 import '../../../../services/recipe_recommendation_service.dart';
 import '../../../../widgets/modern_recipe_card.dart';
+import '../../../../core/utils/logger.dart';
 import 'recipe_detail_screen.dart';
 
 class SuggestedRecipesScreen extends ConsumerWidget {
@@ -136,7 +138,7 @@ class SuggestedRecipesScreen extends ConsumerWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final recommendation = recommendations[index];
-                      return _buildRecommendationCard(context, recommendation);
+                      return _buildRecommendationCard(context, ref, recommendation);
                     },
                     childCount: recommendations.length,
                   ),
@@ -245,12 +247,16 @@ class SuggestedRecipesScreen extends ConsumerWidget {
 
   Widget _buildRecommendationCard(
     BuildContext context,
+    WidgetRef ref,
     RecipeRecommendation recommendation,
   ) {
     final recipe = recommendation.recipe;
     final coverage = recommendation.coveragePercent;
+    final availableCount = recommendation.availableIngredients.length;
     final missingCount = recommendation.missingIngredients.length;
+    final totalCount = recipe.ingredients.length;
     final matchColor = _getMatchColor(coverage);
+    final isLoading = ref.watch(shoppingListControllerProvider).isLoading;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -264,55 +270,171 @@ class SuggestedRecipesScreen extends ConsumerWidget {
               context.push(Routes.recipeDetail, extra: recipe);
             },
           ),
-          // Missing Ingredients Section
-          if (missingCount > 0) ...[
-            const SizedBox(height: 12),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 0),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.warning.withOpacity(0.2),
-                  width: 1,
-                ),
+          // Ingredient Match Summary
+          const SizedBox(height: 12),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 0),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.gray200,
+                width: 1,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.gray200.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Match Percentage Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: matchColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.check_circle_outline,
+                            color: matchColor,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$coverage% Match',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: matchColor,
+                              ),
+                            ),
+                            Text(
+                              '$availableCount of $totalCount ingredients available',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Available Ingredients
+                if (availableCount > 0) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: AppColors.success,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'You have $availableCount ingredient${availableCount > 1 ? 's' : ''}:',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: recommendation.availableIngredients
+                        .take(5)
+                        .map((ingredient) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.success.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                ingredient.name,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                  if (availableCount > 5)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        '+ ${availableCount - 5} more available',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.success.withOpacity(0.8),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+                // Missing Ingredients
+                if (missingCount > 0) ...[
                   Row(
                     children: [
                       Icon(
                         Icons.shopping_cart_outlined,
-                        size: 18,
+                        size: 16,
                         color: AppColors.warning,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'Missing $missingCount ingredient${missingCount > 1 ? 's' : ''}:',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.warning,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: recommendation.missingIngredients
-                        .take(6)
+                        .take(5)
                         .map((ingredient) => Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                                horizontal: 10,
+                                vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.warning.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
+                                color: AppColors.warning.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color: AppColors.warning.withOpacity(0.3),
                                   width: 1,
@@ -321,7 +443,7 @@ class SuggestedRecipesScreen extends ConsumerWidget {
                               child: Text(
                                 ingredient.name,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.warning,
                                 ),
@@ -329,25 +451,115 @@ class SuggestedRecipesScreen extends ConsumerWidget {
                             ))
                         .toList(),
                   ),
-                  if (missingCount > 6)
+                  if (missingCount > 5)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        '+ ${missingCount - 6} more',
+                        '+ ${missingCount - 5} more missing',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: AppColors.warning.withOpacity(0.8),
                           fontStyle: FontStyle.italic,
                         ),
                       ),
                     ),
+                  const SizedBox(height: 16),
+                  // Generate Shopping List Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: isLoading
+                          ? null
+                          : () => _generateShoppingList(context, ref, recommendation),
+                      icon: isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.shopping_cart, size: 18),
+                      label: Text(
+                        isLoading
+                            ? 'Generating...'
+                            : 'Generate Shopping List from Missing Items',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _generateShoppingList(
+    BuildContext context,
+    WidgetRef ref,
+    RecipeRecommendation recommendation,
+  ) async {
+    try {
+      // Create a recipe with only missing ingredients for the shopping list
+      final recipeWithMissingIngredients = recommendation.recipe.copyWith(
+        ingredients: recommendation.missingIngredients,
+      );
+
+      final listId = await ref
+          .read(shoppingListControllerProvider.notifier)
+          .generateShoppingList(recipeWithMissingIngredients);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Shopping list created successfully!'),
+            backgroundColor: AppColors.success,
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                context.push(Routes.shoppingLists);
+              },
+            ),
+          ),
+        );
+        Logger.success(
+          'Shopping list generated from missing ingredients',
+          'SuggestedRecipesScreen',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create shopping list: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        Logger.error(
+          'Failed to generate shopping list',
+          e,
+          null,
+          'SuggestedRecipesScreen',
+        );
+      }
+    }
   }
 
   Color _getMatchColor(int percentage) {

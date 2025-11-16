@@ -26,6 +26,8 @@ class _PantryEditScreenState extends ConsumerState<PantryEditScreen> {
   late TextEditingController _quantityController;
   late TextEditingController _unitController;
   late TextEditingController _categoryController;
+  late TextEditingController _amazonUrlController;
+  late TextEditingController _walmartUrlController;
   DateTime? _expirationDate;
 
   @override
@@ -37,6 +39,8 @@ class _PantryEditScreenState extends ConsumerState<PantryEditScreen> {
     );
     _unitController = TextEditingController(text: widget.item?.unit ?? 'pieces');
     _categoryController = TextEditingController(text: widget.item?.category ?? '');
+    _amazonUrlController = TextEditingController(text: widget.item?.amazonUrl ?? '');
+    _walmartUrlController = TextEditingController(text: widget.item?.walmartUrl ?? '');
     _expirationDate = widget.item?.expirationDate;
   }
 
@@ -46,6 +50,8 @@ class _PantryEditScreenState extends ConsumerState<PantryEditScreen> {
     _quantityController.dispose();
     _unitController.dispose();
     _categoryController.dispose();
+    _amazonUrlController.dispose();
+    _walmartUrlController.dispose();
     super.dispose();
   }
 
@@ -79,6 +85,12 @@ class _PantryEditScreenState extends ConsumerState<PantryEditScreen> {
       category: _categoryController.text.trim(),
       expirationDate: _expirationDate,
       addedAt: widget.item?.addedAt ?? now,
+      amazonUrl: _amazonUrlController.text.trim().isEmpty 
+          ? null 
+          : _amazonUrlController.text.trim(),
+      walmartUrl: _walmartUrlController.text.trim().isEmpty 
+          ? null 
+          : _walmartUrlController.text.trim(),
     );
 
     try {
@@ -301,6 +313,29 @@ class _PantryEditScreenState extends ConsumerState<PantryEditScreen> {
                     return null;
                   },
                 ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Affiliate URLs Section
+              _buildSectionTitle('Buy Links (Optional)'),
+              const SizedBox(height: 12),
+              CustomTextField(
+                label: 'Amazon URL',
+                controller: _amazonUrlController,
+                prefixIcon: Icons.shopping_bag_outlined,
+                keyboardType: TextInputType.url,
+                hint: 'https://amazon.com/...',
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 16),
+              CustomTextField(
+                label: 'Walmart URL',
+                controller: _walmartUrlController,
+                prefixIcon: Icons.store_outlined,
+                keyboardType: TextInputType.url,
+                hint: 'https://walmart.com/...',
+                textInputAction: TextInputAction.next,
               ),
 
               const SizedBox(height: 24),
